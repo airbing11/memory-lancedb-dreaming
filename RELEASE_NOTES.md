@@ -1,10 +1,12 @@
 # v0.1.9 — LanceDB Dreaming Plugin (First Public Release)
 
-## Summary
+## The Problem
 
-First public release of `memory-lancedb-dreaming`, an OpenClaw plugin that restores and extends memory dreaming for LanceDB vector stores (memory-lancedb-pro / @openclaw/memory-lancedb).
+OpenClaw's built-in dreaming stops working when you switch to LanceDB vector storage. Even when it limps along, the output is just category labels — `fact`, `other` — barely useful.
 
-Validated on **OpenClaw 2026.5.20** (Ubuntu 24.04) with **8/8 integration tests passing**.
+## This Plugin Fixes That
+
+It restores the full Light→REM→Deep dreaming pipeline, replaces meaningless category labels with LLM-powered bilingual semantic themes（系统运维排故 / System Maintenance Troubleshooting）, and generates poetic dream diary entries (zh + en) that capture the texture of a day's work.
 
 ## Features
 
@@ -16,11 +18,6 @@ Validated on **OpenClaw 2026.5.20** (Ubuntu 24.04) with **8/8 integration tests 
 - Auto-managed cron job + global pipeline mutex
 - Tools: `dreaming_status`, `dreaming_trigger`
 
-### Output files
-- `DREAMS.md`
-- `memory/dreaming/{light|rem|deep}/YYYY-MM-DD.md`
-- `memory/dreaming/YYYY-MM-DD-consolidation.md`
-
 ## Required Configuration
 
 Two entry-level fields are mandatory for full functionality:
@@ -29,27 +26,6 @@ Two entry-level fields are mandatory for full functionality:
 |-------|--------------|------------|
 | `hooks.allowConversationAccess: true` | Always | Cron runs but pipeline never executes (~120s agent idle) |
 | `subagent.allowModelOverride: true` | When `rem.model` is set | REM falls back to category tags; narrative LLM fails silently |
-
-```json
-{
-  "plugins": {
-    "load": { "paths": ["~/.openclaw/plugins/memory-lancedb-dreaming"] },
-    "entries": {
-      "memory-lancedb-dreaming": {
-        "enabled": true,
-        "hooks": { "allowConversationAccess": true },
-        "subagent": { "allowModelOverride": true },
-        "config": {
-          "rem": { "model": "deepseek/deepseek-v4-flash" },
-          "narrative": { "languages": ["zh", "en"] }
-        }
-      }
-    }
-  }
-}
-```
-
-> **Restart gateway** after changing hooks — config hot reload does not re-register hooks.
 
 ## Install (manual, OpenClaw 2026.5.20)
 
@@ -60,20 +36,19 @@ cp -r /tmp/package/* ~/.openclaw/plugins/memory-lancedb-dreaming/
 cd ~/.openclaw/plugins/memory-lancedb-dreaming && npm install --omit=dev
 ```
 
-> Do **not** install under `~/.openclaw/workspace/` — it breaks `plugins.load.paths` validation.
+Do **not** install under workspace/ — it breaks plugins.load.paths validation. Restart gateway after changing hooks.
 
 ## Changelog (0.1.5 → 0.1.9)
 
 - Wire lookbackDays in Light/REM phases
 - Fix Deep promotedAt (only mark actually promoted entries)
 - Pipeline mutex for concurrent triggers
-- Runtime config reload + model alias support (`rem.execution.model`)
-- LLM fallback via `runtime.llm.complete`
+- Runtime config reload + model alias support
+- LLM fallback via runtime.llm.complete
 - Startup diagnostics for hook/model-override permissions
 - 16 unit tests
 
 ## Known Limitations
 
 - REM clustering is category-based + LLM naming; semantic vector clustering planned for v0.2.0
-- `openclaw plugin install` unavailable on 2026.5.20 — manual tarball install required
-- Manual install may show `plugin not found (stale config entry)` in cron list — harmless if plugin loads via `load.paths`
+- openclaw plugin install unavailable on 2026.5.20 — manual tarball required
