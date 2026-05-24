@@ -1,13 +1,13 @@
 # memory-lancedb-dreaming
 
-让 OpenClaw 的记忆会做梦。
+让 LanceDB 的记忆真正会做梦。
 
-## 为什么需要这个插件？
+## 痛点
 
-OpenClaw 自带的 dreaming 功能在切换向量存储（lancedb-pro / lancedb）后无法正常工作。
-即使能跑，输出也只是 entity 级别的聚类标签，几乎没有可用的结论。
+从 memory-core 切到 memory-lancedb 后，OpenClaw 自带的 dreaming 就彻底不工作了。
+就算勉强跑起来，输出的也只是 `fact` / `other` 这种聚类标签，毫无阅读价值。
 
-本插件专为 memory-lancedb(-pro) 打造，恢复并增强了 dreaming 能力。
+本插件专为 memory-lancedb(-pro) 重新实现了完整的 dreaming 流程。
 
 ## 能力对比
 
