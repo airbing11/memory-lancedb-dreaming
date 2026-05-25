@@ -1,3 +1,9 @@
+[![ClawHub](https://img.shields.io/badge/ClawHub-memory--lancedb--dreaming-blue)](https://clawhub.ai/packages/memory-lancedb-dreaming)
+[![Release](https://img.shields.io/github/v/release/airbing11/memory-lancedb-dreaming)](https://github.com/airbing11/memory-lancedb-dreaming/releases/latest)
+[![OpenClaw](https://img.shields.io/badge/OpenClaw-%3E%3D2026.5.18-green)](https://github.com/openclaw/openclaw)
+[![License](https://img.shields.io/badge/License-MIT-yellow)](LICENSE)
+
+
 # memory-lancedb-dreaming
 
 让 LanceDB 的记忆真正会做梦。
@@ -24,12 +30,21 @@
 
 ## 安装
 
-OpenClaw 2026.5.20 若 `openclaw plugin install` 不可用，请用手动方式：
+> OpenClaw 2026.5.20：`openclaw plugin install` **仍不可用**（`Unknown command: openclaw plugin`）。请用手动安装。
+>
+> 推荐生产版本：**OpenClaw 2026.5.20**。2026.5.22 存在 event loop 回归（#86201/#86194），可能导致 3–8s 响应延迟。
+
+### 方式 A：安装脚本（推荐）
 
 ```bash
-# 方式 A：从 tarball 解压安装（推荐测试）
+bash scripts/install.sh memory-lancedb-dreaming-0.1.12.tgz
+```
+
+### 方式 B：手动解压
+
+```bash
 mkdir -p ~/.openclaw/plugins/memory-lancedb-dreaming
-tar -xzf memory-lancedb-dreaming-0.1.9.tgz -C /tmp
+tar -xzf memory-lancedb-dreaming-0.1.12.tgz -C /tmp
 cp -r /tmp/package/* ~/.openclaw/plugins/memory-lancedb-dreaming/
 cd ~/.openclaw/plugins/memory-lancedb-dreaming && npm install --omit=dev
 ```
@@ -103,7 +118,9 @@ grep -r "workspace/memory-lancedb-dreaming" ~/.openclaw --include="*.json"
 # 清理 openclaw.json、openclaw.json.last-good、plugins/installs.json 中的 stale 路径/记录
 ```
 
-启动后日志应出现 `cronHook=ready` 和 `modelOverride=ready`（若配置了 rem.model）。若为 `blocked` 或 ERROR，说明对应 entry 字段未生效。
+启动后日志应出现 `cronHook=ready` 和 `modelOverride=ready`（若配置了 rem.model）。若为 `blocked` 或 `CONFIG BLOCKED` ERROR，说明对应 entry 字段未生效。
+
+> 插件启用时会自动清理遗留冲突 cron（如 `dreaming-plugin-healthcheck`），避免与自管理 dreaming cron 冲突。
 
 > OpenClaw 2026.5.20 可能自动将插件加入 `plugins.allow`；显式配置 `allow` 可确保万无一失。
 
@@ -111,7 +128,7 @@ grep -r "workspace/memory-lancedb-dreaming" ~/.openclaw --include="*.json"
 
 > `narrative.model` 未配置时会自动回退到 `rem.model`。叙事语言由 `narrative.languages` 控制（如 `["zh","en"]`）。
 
-> 每次 dreaming 运行时会从 runtime / 磁盘重新读取配置；`dreaming_status` 的 `effectiveConfig` 与 `hooks.llmModelOverrideReady` 可核对实际生效值。
+> 每次 dreaming 运行时会从 runtime / 磁盘重新读取配置；`dreaming_status` 的 `effectiveConfig`、`hooks.llmModelOverrideReady`、`lastRun.lastRunAt` 可核对实际生效值。
 
 ## 输出文件
 
@@ -134,12 +151,12 @@ ls ~/.openclaw/plugins/memory-lancedb-dreaming/dist/index.js
 grep -r "workspace/memory-lancedb-dreaming" ~/.openclaw --include="*.json" || echo "no stale workspace path"
 ```
 
-### 1. 安装 v0.1.9 并重启 gateway
+### 1. 安装 v0.1.12 并重启 gateway
 
 ```bash
-# 解压安装（见上方安装节）
+bash scripts/install.sh memory-lancedb-dreaming-0.1.12.tgz
 openclaw gateway stop 2>/dev/null || true
-openclaw gateway run   # 或 systemd / 你的启动方式
+openclaw gateway run
 ```
 
 确认日志：
@@ -147,85 +164,46 @@ openclaw gateway run   # 或 systemd / 你的启动方式
 ```bash
 grep "memory-lancedb-dreaming" ~/.openclaw/logs/* 2>/dev/null | tail -5
 # 期望: registered ... cronHook=ready ... modelOverride=ready
-# 禁止: cronHook=blocked 或 allowConversationAccess DISABLED
+# 禁止: cronHook=blocked 或 CONFIG BLOCKED
 ```
 
 ### 2. dreaming_status 自检
-
-在 agent 会话中调用 `dreaming_status` tool，或：
-
-```bash
-# 若 CLI 支持 tool 调用则用 CLI；否则在 Web UI / agent 里触发
-```
-
-检查 JSON 字段：
 
 | 字段 | 期望 |
 |---|---|
 | `hooks.cronTriggerReady` | `true` |
 | `hooks.llmModelOverrideReady` | `true`（若配置了 rem.model） |
+| `lastRun.lastRunAt` | 触发后有 ISO 时间戳 |
 | `effectiveConfig.remModel` | 你的 model id |
-| `effectiveConfig.narrativeLanguages` | `["zh","en"]` |
-| `llm.subagentAvailable` 或 `llm.llmCompleteAvailable` | 至少一个 `true`（REM/叙事需要） |
-| `memoryCount` | > 0（否则 REM/Deep 可能无内容） |
+| `memoryCount` | > 0 |
 
-### 3. 手动 trigger（不依赖 cron hook 路径）
+### 3. 手动 trigger
 
-调用 `dreaming_trigger`，`phase=all`。
+调用 `dreaming_trigger`，`phase=all`。期望产出 light/rem/deep 文件及 DREAMS.md 更新。
 
-期望：
-
-- 返回 `ok: true`
-- workspace 下生成 `memory/dreaming/light|rem|deep/` 当日 md
-- 若 narrative 启用且 LLM 可用：`DREAMS.md` 有新段落
-
-```bash
-WORKSPACE=$(jq -r '.agents.defaults.workspace // empty' ~/.openclaw/openclaw.json)
-DATE=$(date +%F)
-ls -la "$WORKSPACE/memory/dreaming/light/$DATE.md" 2>/dev/null
-ls -la "$WORKSPACE/memory/dreaming/rem/$DATE.md" 2>/dev/null
-ls -la "$WORKSPACE/DREAMS.md" 2>/dev/null
-grep -E "Theme:|主题" "$WORKSPACE/memory/dreaming/rem/$DATE.md" | head
-```
-
-REM 成功标志：主题行含 LLM 生成的中英文名称，而非仅 `fact 1.00 / other 0.94` 分类标签。
-
-### 4. cron 触发测试
+### 4. cron 触发
 
 ```bash
 openclaw cron list
-# 应看到 memory-lancedb-dreaming 管理的 job，不应再报 plugin not found
-
 openclaw cron run <dreaming-job-id>
 ```
 
-期望 gateway 日志（约数秒内完成，**不应**再跑满 120s LLM）：
+期望数秒内完成，日志含 `dreaming trigger received` 与 `dreaming phases completed`。
 
-```
-memory-lancedb-dreaming: dreaming trigger received, running phases...
-memory-lancedb-dreaming: dreaming phases completed (light=..., rem=..., promoted=..., narrative=...)
-```
-
-### 5. 互斥锁（可选）
-
-连续两次快速 `dreaming_trigger` 或 `cron run`：第二次应返回 `pipeline busy` / 日志 `pipeline already running`。
-
-### 6. 验收清单
+### 5. 验收清单
 
 | # | 测试项 | 通过标准 |
 |---|---|---|
-| 1 | 插件注册 | 日志 `registered`, `cronHook=ready` |
+| 1 | 插件注册 | `cronHook=ready`, `modelOverride=ready` |
 | 2 | dreaming_status | `hooks.cronTriggerReady=true` |
 | 3 | dreaming_trigger | 产出 light/rem/deep 文件 |
 | 4 | REM 语义主题 | rem 文件含 LLM 主题名 |
-| 5 | 中文叙事 | DREAMS.md 含 zh + en 段落 |
-| 6 | cron 触发 | 日志 trigger received + phases completed |
-| 7 | Deep promotedAt | 仅实际 append 的条目带 promotedAt |
+| 5 | 中文叙事 | DREAMS.md 含 zh + en |
+| 6 | cron 触发 | trigger received + phases completed |
+| 7 | 冲突 cron 清理 | 无 `dreaming-plugin-healthcheck` |
 | 8 | 并发互斥 | 第二次 trigger 被 skip |
 
 ## 自定义
-
-所有阈值参数和语言设置均可通过 openclaw.json 中的 config 自定义：
 
 ```json
 "deep": { "maxPromotions": 3, "minScore": 0.8 },
@@ -252,6 +230,6 @@ MIT © 2026 airbing11
 
 ## 发布渠道
 
-- Clawhub 主站
-- Clawhub 镜像站（skillhub 等）
-- GitHub Release + Discussions
+- [ClawHub](https://clawhub.ai/packages/memory-lancedb-dreaming)
+- [GitHub Releases](https://github.com/airbing11/memory-lancedb-dreaming/releases)
+- LanceDB Discussions
