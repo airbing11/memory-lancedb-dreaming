@@ -1,0 +1,1 @@
+{"version":3,"file":"workspace-path.d.ts","sourceRoot":"","sources":["../src/workspace-path.ts"],"names":[],"mappings":"AAEA,OAAO,KAAK,EAAE,iBAAiB,EAAE,MAAM,kCAAkC,CAAC;AAyB1E,uGAAuG;AACvG,wBAAgB,4BAA4B,IAAI,MAAM,GAAG,IAAI,CAQ5D;AAED,wBAAgB,mBAAmB,CACjC,GAAG,EAAE,iBAAiB,EACtB,YAAY,CAAC,EAAE,MAAM,EACrB,eAAe,CAAC,EAAE,MAAM,GAAG,IAAI,GAC9B,MAAM,GAAG,IAAI,CA+Bf"}

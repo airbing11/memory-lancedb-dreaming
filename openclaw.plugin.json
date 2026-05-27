@@ -1,0 +1,190 @@
+{
+  "id": "memory-lancedb-dreaming",
+  "name": "Dreaming (LanceDB)",
+  "description": "Light/REM/Deep sleep dreaming for memory-lancedb. Auto-manages cron, reads LanceDB vector memory, generates narrative dream diary entries, and promotes short-term memories into durable long-term memory.",
+  "version": "0.2.3",
+  "activation": {
+    "onStartup": true
+  },
+  "contracts": {
+    "tools": [
+      "dreaming_status",
+      "dreaming_trigger"
+    ]
+  },
+  "toolMetadata": {
+    "dreaming_status": {
+      "description": "Check dreaming plugin status, memory stats, and last dream report",
+      "optional": true
+    },
+    "dreaming_trigger": {
+      "description": "Manually trigger a dreaming cycle (Light/REM/Deep)",
+      "optional": true
+    }
+  },
+  "configSchema": {
+    "type": "object",
+    "additionalProperties": false,
+    "properties": {
+      "enabled": {
+        "type": "boolean",
+        "default": true,
+        "description": "Enable dreaming functionality"
+      },
+      "cron": {
+        "type": "string",
+        "default": "0 3 * * *",
+        "description": "Cron expression for the daily deep dreaming run (default: 3am daily)"
+      },
+      "timezone": {
+        "type": "string",
+        "default": "Asia/Shanghai",
+        "description": "IANA timezone for cron scheduling"
+      },
+      "light": {
+        "type": "object",
+        "properties": {
+          "enabled": { "type": "boolean", "default": true },
+          "lookbackDays": { "type": "number", "default": 2 },
+          "limit": { "type": "number", "default": 100 }
+        }
+      },
+      "rem": {
+        "type": "object",
+        "properties": {
+          "enabled": { "type": "boolean", "default": true },
+          "lookbackDays": { "type": "number", "default": 7 },
+          "limit": { "type": "number", "default": 10 },
+          "minPatternStrength": { "type": "number", "default": 0.45 },
+          "model": {
+            "type": "string",
+            "description": "Model override for REM semantic theme naming (alias: rem.execution.model)"
+          },
+          "execution": {
+            "type": "object",
+            "properties": {
+              "model": { "type": "string" }
+            }
+          }
+        }
+      },
+      "deep": {
+        "type": "object",
+        "properties": {
+          "enabled": { "type": "boolean", "default": true },
+          "maxPromotions": { "type": "number", "default": 5 },
+          "limit": {
+            "type": "number",
+            "description": "Deprecated: use maxPromotions"
+          },
+          "minScore": { "type": "number", "default": 0.7 },
+          "minRecallCount": { "type": "number", "default": 3 },
+          "minUniqueQueries": { "type": "number", "default": 1 },
+          "recencyHalfLifeDays": { "type": "number", "default": 14 },
+          "maxAgeDays": { "type": "number", "default": 30 }
+        }
+      },
+      "narrative": {
+        "type": "object",
+        "properties": {
+          "enabled": { "type": "boolean", "default": true },
+          "languages": {
+            "type": "array",
+            "items": { "type": "string", "enum": ["zh", "en"] },
+            "default": ["zh", "en"]
+          },
+          "model": {
+            "type": "string",
+            "description": "Model override for narrative generation (falls back to rem.model)"
+          },
+          "execution": {
+            "type": "object",
+            "properties": {
+              "model": { "type": "string" }
+            }
+          }
+        }
+      },
+      "autoManageCron": {
+        "type": "boolean",
+        "default": true,
+        "description": "Automatically create and manage the dreaming cron job"
+      },
+      "verboseLogging": {
+        "type": "boolean",
+        "default": false,
+        "description": "Enable verbose dreaming logs"
+      },
+      "dailyReport": {
+        "type": "object",
+        "properties": {
+          "enabled": { "type": "boolean", "default": true },
+          "cron": { "type": "string", "default": "0 4 * * *" },
+          "timezone": { "type": "string" },
+          "languages": {
+            "type": "array",
+            "items": { "type": "string", "enum": ["zh", "en"] },
+            "default": ["zh"]
+          },
+          "delivery": {
+            "type": "object",
+            "properties": {
+              "channel": { "type": "string" },
+              "to": { "type": "string" },
+              "mode": { "type": "string", "enum": ["announce", "direct", "webhook"] },
+              "threadId": {},
+              "accountId": { "type": "string" }
+            },
+            "required": ["channel", "to"]
+          }
+        }
+      }
+    }
+  },
+  "uiHints": {
+    "enabled": {
+      "label": "Enable Dreaming",
+      "help": "Turn on automatic memory dreaming (Light/REM/Deep phases)"
+    },
+    "cron": {
+      "label": "Cron Schedule",
+      "help": "Cron expression for deep dreaming (e.g. '0 3 * * *' for 3am daily)",
+      "placeholder": "0 3 * * *"
+    },
+    "timezone": {
+      "label": "Timezone",
+      "help": "IANA timezone for scheduling"
+    },
+    "autoManageCron": {
+      "label": "Auto-Manage Cron",
+      "help": "Let the plugin create and update its cron job automatically"
+    },
+    "rem.model": {
+      "label": "REM Theme Model",
+      "placeholder": "deepseek/deepseek-v4-flash",
+      "help": "Provider/model for REM semantic theme naming. Requires plugins.entries.memory-lancedb-dreaming.subagent.allowModelOverride=true and hooks.allowConversationAccess=true."
+    },
+    "dailyReport.enabled": {
+      "label": "Daily Report",
+      "help": "Publish a zero-LLM daily summary to memory/YYYY-MM-DD.md after dreaming (default: on). Set enabled=false to disable."
+    },
+    "dailyReport.cron": {
+      "label": "Daily Report Cron",
+      "placeholder": "0 4 * * *",
+      "help": "Cron for daily report refresh/delivery (default: 4am, after dreaming cron)"
+    },
+    "dailyReport.delivery.channel": {
+      "label": "Daily Report Channel",
+      "help": "Optional OpenClaw channel for announce delivery (e.g. feishu, telegram)"
+    },
+    "dailyReport.delivery.to": {
+      "label": "Daily Report Target",
+      "help": "Delivery target for the configured channel"
+    },
+    "narrative.model": {
+      "label": "Narrative Model",
+      "placeholder": "deepseek/deepseek-v4-flash",
+      "help": "Provider/model for dream diary narrative. Falls back to rem.model. Requires subagent.allowModelOverride=true."
+    }
+  }
+}

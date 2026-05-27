@@ -1,32 +1,39 @@
-[![ClawHub](https://img.shields.io/badge/ClawHub-memory--lancedb--dreaming-blue)](https://clawhub.ai/packages/memory-lancedb-dreaming)
-[![Release](https://img.shields.io/github/v/release/airbing11/memory-lancedb-dreaming)](https://github.com/airbing11/memory-lancedb-dreaming/releases/latest)
-[![OpenClaw](https://img.shields.io/badge/OpenClaw-%3E%3D2026.5.18-green)](https://github.com/openclaw/openclaw)
-[![License](https://img.shields.io/badge/License-MIT-yellow)](LICENSE)
-
-
 # memory-lancedb-dreaming
 
 让 LanceDB 的记忆真正会做梦。
 
-## 痛点
+> **English:** OpenClaw has **one memory slot**; built-in **dreaming** runs under **memory-core**, not LanceDB vectors. This plugin keeps **memory-lancedb** / **lancedb-pro** as your store and restores the full Light → REM → Deep pipeline (LLM themes, promotion, bilingual `DREAMS.md`).
 
-从 memory-core 切到 memory-lancedb 后，OpenClaw 自带的 dreaming 就彻底不工作了。
-就算勉强跑起来，输出的也只是 `fact` / `other` 这种聚类标签，毫无阅读价值。
+## 为什么需要这个插件
 
-本插件专为 memory-lancedb(-pro) 重新实现了完整的 dreaming 流程。
+OpenClaw **同一时间只启用一个 memory 插槽**（`memory-core` 或 `memory-lancedb` / `lancedb-pro` 等，二选一）。内置 **dreaming**（Light / REM / Deep、叙事日记、记忆晋升）实现并运行在 **memory-core** 下面——它读写的是 core 侧记忆，**不是你的 LanceDB 向量表**。
+
+因此当你把插槽换成 LanceDB 后：
+
+| 方面 | 情况 |
+|------|------|
+| 日常检索 / 写入 | ✅ 走 LanceDB 向量库 |
+| 原生 dreaming 对 LanceDB 数据跑完整管线 | ❌ 架构上接不上 |
+| 偶发输出 | 常退化为 `fact` / `other` 标签，缺少主题反思与 `DREAMS.md` |
+
+**memory-lancedb-dreaming** 解决的就是这个矛盾：**继续用 LanceDB 存向量记忆**，同时**补回（并增强）整套 dreaming**——独立 Light → REM → Deep、REM 可选 LLM 双语主题名、可配置晋升阈值、托管 cron、中英 `DREAMS.md`。
+
+不必为了 dreaming 再切回 memory-core。
 
 ## 能力对比
 
-| 能力 | OpenClaw 原生 dreaming | memory-lancedb-dreaming |
+| 能力 | OpenClaw 原生 dreaming（memory-core 插槽） | memory-lancedb-dreaming（LanceDB 插槽） |
 |---|---|---|
-| lancedb 兼容 | ❌ | ✅ |
+| 与当前 memory 插槽一致 | 仅当插槽为 memory-core | ✅ 插槽为 memory-lancedb / lancedb-pro |
+| 对 LanceDB 向量跑完整管线 | ❌（单插槽 + dreaming 在 core 下） | ✅ |
 | 语义化主题命名 | ❌ | ✅（REM 可选 LLM 命名） |
 | 多语种叙事输出（中/英） | ❌ | ✅ |
 | 多级提升链 | Light→REM→Deep 简化版 | Light(近期观测)→REM(category 分布分析)→Deep(提升决策) |
 | 结构化反思表 | ❌ | ✅ 主题+置信度+证据链 |
 | 提升阈值自定义 | ❌ | ✅ 可配置 maxPromotions/minScore 等 |
 | lookback 时间窗 | 部分支持 | ✅ Light/REM 按 recall 信号过滤 |
-| 独立输出文件 | 写回 memory 日记 | DREAMS.md + light/rem/deep 各阶段独立文件 |
+| 独立输出文件 | 写回 memory 日记 | DREAMS.md + light/rem/deep 各阶段独立文件 + **梦境日报** |
+| 日报汇总 / 可选推送 | ❌ | ✅ 默认开启（`dailyReport`，可关闭） |
 
 ## 安装
 
@@ -37,14 +44,14 @@
 ### 方式 A：安装脚本（推荐）
 
 ```bash
-bash scripts/install.sh memory-lancedb-dreaming-0.1.12.tgz
+bash scripts/install.sh memory-lancedb-dreaming-0.2.3.tgz
 ```
 
 ### 方式 B：手动解压
 
 ```bash
 mkdir -p ~/.openclaw/plugins/memory-lancedb-dreaming
-tar -xzf memory-lancedb-dreaming-0.1.12.tgz -C /tmp
+tar -xzf memory-lancedb-dreaming-0.2.3.tgz -C /tmp
 cp -r /tmp/package/* ~/.openclaw/plugins/memory-lancedb-dreaming/
 cd ~/.openclaw/plugins/memory-lancedb-dreaming && npm install --omit=dev
 ```
@@ -99,6 +106,16 @@ cd ~/.openclaw/plugins/memory-lancedb-dreaming && npm install --omit=dev
           "narrative": {
             "enabled": true,
             "languages": ["zh", "en"]
+          },
+          "dailyReport": {
+            "enabled": true,
+            "cron": "0 4 * * *",
+            "languages": ["zh"],
+            "delivery": {
+              "channel": "feishu",
+              "to": "your-open-id",
+              "mode": "announce"
+            }
           }
         }
       }
@@ -128,7 +145,32 @@ grep -r "workspace/memory-lancedb-dreaming" ~/.openclaw --include="*.json"
 
 > `narrative.model` 未配置时会自动回退到 `rem.model`。叙事语言由 `narrative.languages` 控制（如 `["zh","en"]`）。
 
-> 每次 dreaming 运行时会从 runtime / 磁盘重新读取配置；`dreaming_status` 的 `effectiveConfig`、`hooks.llmModelOverrideReady`、`lastRun.lastRunAt` 可核对实际生效值。
+> 每次 dreaming 运行时会从 runtime / 磁盘重新读取配置；`dreaming_status` 的 `effectiveConfig`、`hooks.llmModelOverrideReady`、`lastRun.lastRunAt`、`dailyReport` 可核对实际生效值。
+
+## 梦境日报（v0.2.0+）
+
+`dailyReport` **默认开启**。每次 `phase=all` 跑完后会：
+
+1. 写入结构化快照 `memory/.dreams/lancedb-dreaming-daily-snapshot.json`
+2. 汇总三阶段 + `DREAMS.md` 叙事，写入 `memory/YYYY-MM-DD.md`（`## 梦境日报` 区块）
+3. 归档副本 `memory/dreaming/daily/YYYY-MM-DD.md`
+
+**不调用 LLM**——只读取已有文件 / pipeline 结果拼接。
+
+默认另有一条 **4:00** managed cron（可在配置里改时间）。若配置了 `dailyReport.delivery`：
+
+- **3:00 dreaming 跑完**（`phase=all`）后，插件通过 **channel outbound API** 立即推送到指定 channel（零 LLM）
+- **4:00** 日报 cron 触发后同样推送（刷新文件后再发）
+
+> OpenClaw 不允许 `sessionTarget=main` 的 cron 带 `delivery` 字段（仅 isolated 支持，但 isolated 又不支持 systemEvent）。因此推送由插件在 handler 内完成，cron 只负责触发。
+
+关闭日报：
+
+```json
+"dailyReport": { "enabled": false }
+```
+
+仅写文件、不推送：省略 `delivery` 即可（默认行为）。
 
 ## 输出文件
 
@@ -136,7 +178,9 @@ grep -r "workspace/memory-lancedb-dreaming" ~/.openclaw --include="*.json"
 - `memory/dreaming/light/YYYY-MM-DD.md` — Light 阶段原始观测
 - `memory/dreaming/rem/YYYY-MM-DD.md` — REM 阶段主题模式
 - `memory/dreaming/deep/YYYY-MM-DD.md` — Deep 阶段提升记录
-- `memory/dreaming/YYYY-MM-DD-consolidation.md` — 完整报告
+- `memory/YYYY-MM-DD.md` — 当日 memory 日记（含 **梦境日报** 区块）
+- `memory/dreaming/daily/YYYY-MM-DD.md` — 日报归档副本
+- `memory/.dreams/lancedb-dreaming-daily-snapshot.json` — 结构化快照（供日报/cron 读取）
 
 ## OpenClaw 测试流程
 
@@ -151,10 +195,10 @@ ls ~/.openclaw/plugins/memory-lancedb-dreaming/dist/index.js
 grep -r "workspace/memory-lancedb-dreaming" ~/.openclaw --include="*.json" || echo "no stale workspace path"
 ```
 
-### 1. 安装 v0.1.12 并重启 gateway
+### 1. 安装 v0.2.3 并重启 gateway
 
 ```bash
-bash scripts/install.sh memory-lancedb-dreaming-0.1.12.tgz
+bash scripts/install.sh memory-lancedb-dreaming-0.2.3.tgz
 openclaw gateway stop 2>/dev/null || true
 openclaw gateway run
 ```
@@ -201,7 +245,8 @@ openclaw cron run <dreaming-job-id>
 | 5 | 中文叙事 | DREAMS.md 含 zh + en |
 | 6 | cron 触发 | trigger received + phases completed |
 | 7 | 冲突 cron 清理 | 无 `dreaming-plugin-healthcheck` |
-| 8 | 并发互斥 | 第二次 trigger 被 skip |
+| 9 | 梦境日报 | `memory/YYYY-MM-DD.md` 含三阶段概要 + 叙事 |
+| 10 | 日报 cron | `openclaw cron list` 含 `Dreaming Daily Report` |
 
 ## 自定义
 

@@ -1,0 +1,71 @@
+{
+  "name": "memory-lancedb-dreaming",
+  "version": "0.2.3",
+  "description": "Dreaming plugin for memory-lancedb \u2014 Light/REM/Deep sleep phases with LanceDB vector memory, narrative generation, daily report with Feishu/WeCom push (zero LLM).",
+  "type": "module",
+  "main": "./dist/index.js",
+  "files": [
+    "dist/",
+    "openclaw.plugin.json",
+    "README.md",
+    "scripts/install.sh",
+    "scripts/verify-smoke.sh"
+  ],
+  "scripts": {
+    "build": "tsc",
+    "dev": "tsc --watch",
+    "test": "node scripts/test.mjs",
+    "prepublishOnly": "npm run test"
+  },
+  "openclaw": {
+    "extensions": [
+      "./src/index.ts"
+    ],
+    "runtimeExtensions": [
+      "./dist/index.js"
+    ],
+    "compat": {
+      "pluginApi": ">=2026.5.18",
+      "minGatewayVersion": "2026.5.18"
+    },
+    "build": {
+      "openclawVersion": "2026.5.20",
+      "pluginSdkVersion": "2026.5.20"
+    }
+  },
+  "dependencies": {
+    "@lancedb/lancedb": "^0.29.0",
+    "apache-arrow": "^18.1.0",
+    "openai": ">=4.0.0",
+    "typebox": "^1.0.0"
+  },
+  "devDependencies": {
+    "typescript": "^5.5.0"
+  },
+  "peerDependencies": {
+    "openclaw": ">=2026.5.18",
+    "@openclaw/memory-lancedb": ">=2026.5.18"
+  },
+  "peerDependenciesMeta": {
+    "@openclaw/memory-lancedb": {
+      "optional": false
+    }
+  },
+  "author": "airbing11",
+  "homepage": "https://clawhub.ai/packages/memory-lancedb-dreaming",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/airbing11/memory-lancedb-dreaming.git"
+  },
+  "bugs": {
+    "url": "https://github.com/airbing11/memory-lancedb-dreaming/issues"
+  },
+  "keywords": [
+    "openclaw",
+    "plugin",
+    "memory",
+    "dreaming",
+    "lancedb"
+  ],
+  "license": "MIT"
+}
