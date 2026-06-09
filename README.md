@@ -1,8 +1,28 @@
 # memory-lancedb-dreaming
 
-让 LanceDB 的记忆真正会做梦。
+让 LanceDB 的记忆真正会做梦。**v0.2.4** 起按 `plugins.slots.memory` 自动读取 LanceDB 配置（支持 `memory-lancedb-pro`）；**v0.2.3** 起可选日报推送到飞书 / 企微等通道。
 
-> **English:** OpenClaw has **one memory slot**; built-in **dreaming** runs under **memory-core**, not LanceDB vectors. This plugin keeps **memory-lancedb** / **lancedb-pro** as your store and restores the full Light → REM → Deep pipeline (LLM themes, promotion, bilingual `DREAMS.md`).
+> **English:** OpenClaw has **one memory slot**; built-in **dreaming** runs under **memory-core**, not LanceDB vectors. This plugin keeps **memory-lancedb** / **lancedb-pro** as your store and restores the full Light → REM → Deep pipeline (LLM themes, promotion, bilingual `DREAMS.md`), plus an optional **daily report** pushed to your chat channel.
+
+## 每天你会看到什么（v0.2.3）
+
+配置 `dailyReport.delivery` 后，**无需打开文件**即可在 IM 里收到当日摘要（零 LLM，插件拼接）：
+
+| 时机 | 你会收到 |
+|------|----------|
+| 每天 **3:00** 梦境 cron 跑完 | 飞书/企微等：**Light / REM / Deep 概要 + DREAMS 叙事摘录** |
+| 每天 **4:00** 日报 cron（可改时间） | 同上（从快照刷新后再发，适合只看推送的用户） |
+| 随时手动 `dreaming_trigger phase=all` | 写文件 + 若配置了 `delivery` 则同步推送 |
+
+**本地仍会写入**（便于存档与检索）：
+
+- `memory/YYYY-MM-DD.md` 里的 `## 梦境日报` 区块  
+- `memory/dreaming/daily/YYYY-MM-DD.md` 归档  
+- 各阶段 `light` / `rem` / `deep` 与 `DREAMS.md`
+
+只要配好 `channel` + `to`（例如飞书 `open_id`），日报会走 OpenClaw 官方出站通道 `sendDurableMessageBatch`，与 cron announce 同路径，**不消耗对话 LLM**。
+
+不想推送、只要文件：保持 `dailyReport.enabled: true`，**省略** `delivery` 即可。完全关闭日报：`dailyReport.enabled: false`。
 
 ## 为什么需要这个插件
 
@@ -33,7 +53,7 @@ OpenClaw **同一时间只启用一个 memory 插槽**（`memory-core` 或 `memo
 | 提升阈值自定义 | ❌ | ✅ 可配置 maxPromotions/minScore 等 |
 | lookback 时间窗 | 部分支持 | ✅ Light/REM 按 recall 信号过滤 |
 | 独立输出文件 | 写回 memory 日记 | DREAMS.md + light/rem/deep 各阶段独立文件 + **梦境日报** |
-| 日报汇总 / 可选推送 | ❌ | ✅ 默认开启（`dailyReport`，可关闭） |
+| 日报汇总 / 通道推送（飞书等） | ❌ | ✅ 默认开启；配 `delivery` 后每日自动推到 IM |
 
 ## 安装
 
@@ -44,14 +64,14 @@ OpenClaw **同一时间只启用一个 memory 插槽**（`memory-core` 或 `memo
 ### 方式 A：安装脚本（推荐）
 
 ```bash
-bash scripts/install.sh memory-lancedb-dreaming-0.2.3.tgz
+bash scripts/install.sh memory-lancedb-dreaming-0.2.4.tgz
 ```
 
 ### 方式 B：手动解压
 
 ```bash
 mkdir -p ~/.openclaw/plugins/memory-lancedb-dreaming
-tar -xzf memory-lancedb-dreaming-0.2.3.tgz -C /tmp
+tar -xzf memory-lancedb-dreaming-0.2.4.tgz -C /tmp
 cp -r /tmp/package/* ~/.openclaw/plugins/memory-lancedb-dreaming/
 cd ~/.openclaw/plugins/memory-lancedb-dreaming && npm install --omit=dev
 ```
@@ -147,30 +167,64 @@ grep -r "workspace/memory-lancedb-dreaming" ~/.openclaw --include="*.json"
 
 > 每次 dreaming 运行时会从 runtime / 磁盘重新读取配置；`dreaming_status` 的 `effectiveConfig`、`hooks.llmModelOverrideReady`、`lastRun.lastRunAt`、`dailyReport` 可核对实际生效值。
 
-## 梦境日报（v0.2.0+）
+### LanceDB 配置来源（v0.2.4+）
 
-`dailyReport` **默认开启**。每次 `phase=all` 跑完后会：
+Dreaming 从 **当前 memory 插槽** 读取 LanceDB 的 `dbPath` / `embedding`：
+
+1. `plugins.slots.memory` 指向的 entry（例如 `memory-lancedb-pro`）
+2. 若 slot 未设或该 entry 无 config，再回退 `memory-lancedb-pro` → `memory-lancedb` → `lancedb-pro`
+
+启动日志应出现：`cached LanceDB config (plugin=memory-lancedb-pro, dbPath=...)`。  
+`dreaming_status` 会返回 `lancedbPluginId` 与 `lancedb`；若 pipeline 失败而日报仍在发，先查这两项。
+
+## 梦境日报（v0.2.3+）
+
+`dailyReport` **默认开启**（`enabled: true`）。目标：**每天自动看到昨晚梦境做了什么**——文件 + 可选 IM 推送。
+
+### 做了什么
+
+每次 dreaming（`phase=all`）或日报 cron 触发后，插件会：
 
 1. 写入结构化快照 `memory/.dreams/lancedb-dreaming-daily-snapshot.json`
-2. 汇总三阶段 + `DREAMS.md` 叙事，写入 `memory/YYYY-MM-DD.md`（`## 梦境日报` 区块）
-3. 归档副本 `memory/dreaming/daily/YYYY-MM-DD.md`
+2. 汇总 Light / REM / Deep + `DREAMS.md` 叙事，写入 `memory/YYYY-MM-DD.md`（`## 梦境日报`）
+3. 归档 `memory/dreaming/daily/YYYY-MM-DD.md`
+4. 若配置了 `dailyReport.delivery` → 用 **`sendDurableMessageBatch`** 推到 `channel` + `to`（**零 LLM**）
 
-**不调用 LLM**——只读取已有文件 / pipeline 结果拼接。
+### 两条托管 cron（`autoManageCron: true`）
 
-默认另有一条 **4:00** managed cron（可在配置里改时间）。若配置了 `dailyReport.delivery`：
+| Cron | 默认时间 | 作用 |
+|------|----------|------|
+| LanceDB Memory Dreaming | `0 3 * * *` | 跑 Light/REM/Deep + 写日报 + **有 delivery 则推送** |
+| Dreaming Daily Report | `0 4 * * *` | 仅刷新日报文件 + **再推送一次**（适合只盯 IM 的用户） |
 
-- **3:00 dreaming 跑完**（`phase=all`）后，插件通过 **channel outbound API** 立即推送到指定 channel（零 LLM）
-- **4:00** 日报 cron 触发后同样推送（刷新文件后再发）
+两条均为 `main` + `systemEvent`（零 LLM 触发）。OpenClaw **不允许** 在 main cron 上挂 `delivery`，因此推送在插件 `before_agent_reply` 内完成，不依赖 cron.delivery。
 
-> OpenClaw 不允许 `sessionTarget=main` 的 cron 带 `delivery` 字段（仅 isolated 支持，但 isolated 又不支持 systemEvent）。因此推送由插件在 handler 内完成，cron 只负责触发。
+### 推送配置示例（飞书）
 
-关闭日报：
+```json
+"dailyReport": {
+  "enabled": true,
+  "cron": "0 4 * * *",
+  "languages": ["zh"],
+  "delivery": {
+    "channel": "feishu",
+    "to": "ou_xxxxxxxx",
+    "mode": "announce"
+  }
+}
+```
+
+- `channel` / `to`：与你在 OpenClaw 里用的通道一致（飞书填 `open_id`，企微/其他通道填对应目标 ID）。
+- 成功时 gateway 日志：`daily report delivered via feishu to ...`
+- 失败时会有 **warn/error**，便于排查（v0.2.2 及以前可能静默失败，请升级到 **0.2.3**）。
+
+### 关闭方式
 
 ```json
 "dailyReport": { "enabled": false }
 ```
 
-仅写文件、不推送：省略 `delivery` 即可（默认行为）。
+仅写文件、不推送：**不要写** `delivery`（保留 `enabled: true` 即可）。
 
 ## 输出文件
 
@@ -195,10 +249,10 @@ ls ~/.openclaw/plugins/memory-lancedb-dreaming/dist/index.js
 grep -r "workspace/memory-lancedb-dreaming" ~/.openclaw --include="*.json" || echo "no stale workspace path"
 ```
 
-### 1. 安装 v0.2.3 并重启 gateway
+### 1. 安装 v0.2.4 并重启 gateway
 
 ```bash
-bash scripts/install.sh memory-lancedb-dreaming-0.2.3.tgz
+bash scripts/install.sh memory-lancedb-dreaming-0.2.4.tgz
 openclaw gateway stop 2>/dev/null || true
 openclaw gateway run
 ```
@@ -245,8 +299,9 @@ openclaw cron run <dreaming-job-id>
 | 5 | 中文叙事 | DREAMS.md 含 zh + en |
 | 6 | cron 触发 | trigger received + phases completed |
 | 7 | 冲突 cron 清理 | 无 `dreaming-plugin-healthcheck` |
-| 9 | 梦境日报 | `memory/YYYY-MM-DD.md` 含三阶段概要 + 叙事 |
+| 9 | 梦境日报文件 | `memory/YYYY-MM-DD.md` 含 `## 梦境日报` |
 | 10 | 日报 cron | `openclaw cron list` 含 `Dreaming Daily Report` |
+| 11 | 通道推送（v0.2.3） | 日志 `daily report delivered via ...` + IM 收到正文 |
 
 ## 自定义
 
@@ -272,6 +327,13 @@ npm pack
 ## 许可证
 
 MIT © 2026 airbing11
+
+## 版本与变更
+
+- 当前推荐版本：**0.2.4**（memory-lancedb-pro 插槽兼容；**生产验收 GO 2026-06-09**）
+- 变更记录：[CHANGELOG.md](./CHANGELOG.md)
+- 验收报告：[docs/v0.2.4-ACCEPTANCE-REPORT.md](./docs/v0.2.4-ACCEPTANCE-REPORT.md)
+- 发布步骤：[docs/RELEASE-0.2.4.md](./docs/RELEASE-0.2.4.md)
 
 ## 发布渠道
 

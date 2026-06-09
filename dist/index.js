@@ -5,7 +5,7 @@ import { resolveDreamingConfig, summarizeDreamingConfig } from "./config-resolve
 import { summarizePluginEntryPolicy, warnIfCronHookBlocked, warnIfModelOverrideBlocked } from "./hook-policy.js";
 import { RUNTIME_CRON_RECONCILE_INTERVAL_MS, STARTUP_CRON_RETRY_DELAY_MS, STARTUP_CRON_MAX_RETRIES, DAILY_REPORT_TRIGGER_TOKEN, DREAMING_TRIGGER_TOKEN, PLUGIN_VERSION, } from "./constants.js";
 import { reconcileManagedDreamingCron, resolveCronServiceFromCandidate, } from "./cron.js";
-import { createDreamingDb, getCachedLancedbConfig, initLancedbConfigCache, } from "./lancedb-client.js";
+import { createDreamingDb, getCachedLancedbConfig, getResolvedLanceDbPluginId, initLancedbConfigCache, } from "./lancedb-client.js";
 import { runDreamingPipeline } from "./pipeline.js";
 import { endPipeline, resetPipelineForShutdown, tryBeginPipeline, } from "./pipeline-lock.js";
 import { readDreamingRunMetadata, recordDreamingRun } from "./run-metadata.js";
@@ -241,7 +241,7 @@ export default definePluginEntry({
             warnIfCronHookBlocked(api, config.enabled);
             warnIfModelOverrideBlocked(api, config);
             const entryPolicy = summarizePluginEntryPolicy(api, config);
-            api.logger.info(`memory-lancedb-dreaming: registered (enabled=${config.enabled}, cron=${config.cron}, cronHook=${entryPolicy.cronTriggerReady ? "ready" : "blocked"}, modelOverride=${entryPolicy.llmModelOverrideReady ? "ready" : "blocked"}, lancedb=${getCachedLancedbConfig()?.dbPath ?? "not-configured"})`);
+            api.logger.info(`memory-lancedb-dreaming: registered (enabled=${config.enabled}, cron=${config.cron}, cronHook=${entryPolicy.cronTriggerReady ? "ready" : "blocked"}, modelOverride=${entryPolicy.llmModelOverrideReady ? "ready" : "blocked"}, lancedbPlugin=${getResolvedLanceDbPluginId() ?? "not-configured"}, lancedbPath=${getCachedLancedbConfig()?.dbPath ?? "not-configured"})`);
             try {
                 api.on("gateway_start", async (_event, ctx) => {
                     const activeConfig = refreshConfig();
@@ -409,6 +409,7 @@ export default definePluginEntry({
                             autoManageCron: activeConfig.autoManageCron,
                             hooks: summarizePluginEntryPolicy(api, activeConfig),
                             lancedb: getCachedLancedbConfig(),
+                            lancedbPluginId: getResolvedLanceDbPluginId(),
                             lancedbError,
                             memoryCount,
                             effectiveConfig: summarizeDreamingConfig(activeConfig),

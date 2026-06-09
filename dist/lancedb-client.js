@@ -1,21 +1,16 @@
 import { readFileSync } from "node:fs";
 import { homedir } from "node:os";
 import { join } from "node:path";
+import { resolveLanceDbMemoryEntryFromConfig, resolveMemorySlotPluginId, } from "./lancedb-config-resolve.js";
 import { MemoryDB, vectorDimsForModel } from "./memory-db.js";
 import { resolveDbPathForLance, setLanceDbPathResolver } from "./lancedb-path.js";
 import { createAsyncLock } from "./utils.js";
 const DEFAULT_DB_PATH = "~/.openclaw/memory/lancedb";
+const LANCEDB_CONFIG_HELP = "set plugins.slots.memory to your LanceDB plugin (e.g. memory-lancedb-pro) and ensure plugins.entries.<id>.config has embedding (and optional dbPath) in ~/.openclaw/openclaw.json";
 let cachedLancedbCfg = null;
+let cachedLancedbPluginId = null;
 let cachedDb = null;
 let cachedDbPathKey = null;
-function resolveEnvVars(value) {
-    return value.replace(/\$\{([^}]+)\}/g, (_, envVar) => {
-        const envValue = process.env[envVar];
-        if (!envValue)
-            throw new Error(`Environment variable ${envVar} is not set`);
-        return envValue;
-    });
-}
 function asRecord(value) {
     return value && typeof value === "object" && !Array.isArray(value)
         ? value
@@ -39,31 +34,29 @@ export function loadConfigFromDisk() {
     }
     return undefined;
 }
-function getPluginEntry(configRoot, pluginId) {
-    const plugins = asRecord(configRoot?.plugins);
-    const entries = asRecord(plugins?.entries);
-    return asRecord(entries?.[pluginId]);
-}
-/** Resolve memory-lancedb plugin entry from api config, runtime, or disk. */
-export function getMemoryLancedbEntry(api) {
+/** Resolve LanceDB memory plugin entry from api config, runtime, or disk. */
+export function resolveLanceDbMemoryEntry(api) {
     if (api) {
-        const entryFromApi = getPluginEntry(asRecord(api.config), "memory-lancedb");
-        if (entryFromApi?.config)
-            return entryFromApi;
+        const fromApi = resolveLanceDbMemoryEntryFromConfig(asRecord(api.config));
+        if (fromApi)
+            return fromApi;
         const runtime = api.runtime;
-        const runtimeConfig = asRecord(runtime?.config?.current?.());
-        const entryFromRuntime = getPluginEntry(runtimeConfig, "memory-lancedb");
-        if (entryFromRuntime?.config)
-            return entryFromRuntime;
+        const fromRuntime = resolveLanceDbMemoryEntryFromConfig(asRecord(runtime?.config?.current?.()));
+        if (fromRuntime)
+            return fromRuntime;
     }
-    const diskConfig = loadConfigFromDisk();
-    return getPluginEntry(diskConfig, "memory-lancedb");
+    return resolveLanceDbMemoryEntryFromConfig(loadConfigFromDisk());
 }
-export function parseMemoryLancedbEntry(entry) {
+/** @deprecated Use resolveLanceDbMemoryEntry — returns entry only for backward compatibility. */
+export function getMemoryLancedbEntry(api) {
+    return resolveLanceDbMemoryEntry(api)?.entry;
+}
+export function parseMemoryLancedbEntry(entry, pluginId) {
+    const label = pluginId ?? "LanceDB memory plugin";
     const raw = asRecord(entry.config) ?? {};
     const embeddingRaw = asRecord(raw.embedding);
     if (!embeddingRaw) {
-        throw new Error("memory-lancedb-dreaming: memory-lancedb config missing embedding section");
+        throw new Error(`memory-lancedb-dreaming: ${label} config missing embedding section`);
     }
     const model = typeof embeddingRaw.model === "string" ? embeddingRaw.model : "text-embedding-3-small";
     const dbPath = typeof raw.dbPath === "string" ? raw.dbPath : DEFAULT_DB_PATH;
@@ -84,41 +77,68 @@ export function parseMemoryLancedbEntry(entry) {
         }
     }
     if (!dimensions) {
-        throw new Error(`memory-lancedb-dreaming: could not resolve embedding dimensions for model ${model}`);
+        throw new Error(`memory-lancedb-dreaming: could not resolve embedding dimensions for model ${model} (${label})`);
     }
-    return { dbPath, dimensions, storageOptions };
+    return {
+        dbPath,
+        dimensions,
+        storageOptions,
+        ...(pluginId ? { pluginId } : {}),
+    };
 }
-function readLancedbConfigFromEntry(entry) {
-    if (!entry?.config)
-        return null;
-    return parseMemoryLancedbEntry(entry);
+function applyResolvedLanceDbConfig(resolved) {
+    const next = parseMemoryLancedbEntry(resolved.entry, resolved.pluginId);
+    cachedLancedbPluginId = resolved.pluginId;
+    return next;
 }
 function readLancedbConfigFromDisk() {
-    const entry = getPluginEntry(loadConfigFromDisk(), "memory-lancedb");
-    return readLancedbConfigFromEntry(entry);
+    const resolved = resolveLanceDbMemoryEntryFromConfig(loadConfigFromDisk());
+    if (!resolved)
+        return null;
+    return applyResolvedLanceDbConfig(resolved);
 }
-/** Resolve and cache memory-lancedb paths at plugin register time. */
+function formatLanceDbNotFoundMessage(api) {
+    const configRoots = [
+        api ? asRecord(api.config) : undefined,
+        loadConfigFromDisk(),
+    ].filter(Boolean);
+    const slotIds = configRoots
+        .map((root) => resolveMemorySlotPluginId(root))
+        .filter((value) => Boolean(value));
+    const slotHint = slotIds.length > 0
+        ? ` (plugins.slots.memory=${slotIds[0]}, but no LanceDB config found on that entry)`
+        : "";
+    return `memory-lancedb-dreaming: LanceDB config not available${slotHint} — ${LANCEDB_CONFIG_HELP}`;
+}
+function cacheLanceDbConfig(next, pluginId) {
+    const changed = !cachedLancedbCfg ||
+        cachedLancedbCfg.dbPath !== next.dbPath ||
+        cachedLancedbCfg.dimensions !== next.dimensions ||
+        cachedLancedbPluginId !== pluginId ||
+        JSON.stringify(cachedLancedbCfg.storageOptions ?? {}) !==
+            JSON.stringify(next.storageOptions ?? {});
+    cachedLancedbCfg = next;
+    cachedLancedbPluginId = pluginId;
+    if (changed) {
+        cachedDb = null;
+        cachedDbPathKey = null;
+    }
+    return cachedLancedbCfg;
+}
+/** Resolve and cache LanceDB paths at plugin register time. */
 export function initLancedbConfigCache(api) {
     setLanceDbPathResolver(api.resolvePath.bind(api));
     const previous = cachedLancedbCfg;
     try {
-        const entry = getMemoryLancedbEntry(api);
-        if (!entry) {
-            api.logger.warn("memory-lancedb-dreaming: memory-lancedb plugin entry not found in api.config, runtime, or ~/.openclaw/openclaw.json");
+        const resolved = resolveLanceDbMemoryEntry(api);
+        if (!resolved) {
+            api.logger.warn(formatLanceDbNotFoundMessage(api));
             return previous;
         }
-        const next = parseMemoryLancedbEntry(entry);
-        const changed = !previous ||
-            previous.dbPath !== next.dbPath ||
-            previous.dimensions !== next.dimensions ||
-            JSON.stringify(previous.storageOptions ?? {}) !== JSON.stringify(next.storageOptions ?? {});
-        cachedLancedbCfg = next;
-        if (changed) {
-            cachedDb = null;
-            cachedDbPathKey = null;
-        }
-        api.logger.info(`memory-lancedb-dreaming: cached LanceDB config (dbPath=${cachedLancedbCfg.dbPath}, dimensions=${cachedLancedbCfg.dimensions})`);
-        return cachedLancedbCfg;
+        const next = applyResolvedLanceDbConfig(resolved);
+        const cached = cacheLanceDbConfig(next, resolved.pluginId);
+        api.logger.info(`memory-lancedb-dreaming: cached LanceDB config (plugin=${resolved.pluginId}, dbPath=${cached.dbPath}, dimensions=${cached.dimensions})`);
+        return cached;
     }
     catch (err) {
         api.logger.warn(`memory-lancedb-dreaming: failed to cache LanceDB config, keeping existing cache: ${String(err)}`);
@@ -130,19 +150,11 @@ export function refreshLancedbConfigCache(api) {
     const previous = cachedLancedbCfg;
     setLanceDbPathResolver(api.resolvePath.bind(api));
     try {
-        const entry = getMemoryLancedbEntry(api);
-        if (!entry)
+        const resolved = resolveLanceDbMemoryEntry(api);
+        if (!resolved)
             return previous ?? readLancedbConfigFromDisk();
-        const next = parseMemoryLancedbEntry(entry);
-        const changed = !previous ||
-            previous.dbPath !== next.dbPath ||
-            previous.dimensions !== next.dimensions ||
-            JSON.stringify(previous.storageOptions ?? {}) !== JSON.stringify(next.storageOptions ?? {});
-        if (changed) {
-            cachedLancedbCfg = next;
-            cachedDb = null;
-            cachedDbPathKey = null;
-        }
+        const next = applyResolvedLanceDbConfig(resolved);
+        cacheLanceDbConfig(next, resolved.pluginId);
         return cachedLancedbCfg;
     }
     catch (err) {
@@ -150,9 +162,7 @@ export function refreshLancedbConfigCache(api) {
         return previous ?? cachedLancedbCfg;
     }
 }
-/**
- * Resolve LanceDB config: (1) in-memory cache, (2) disk fallback, (3) throw.
- */
+/** Resolve LanceDB config: (1) in-memory cache, (2) disk fallback, (3) throw. */
 function resolveLancedbCfg() {
     if (cachedLancedbCfg)
         return cachedLancedbCfg;
@@ -163,10 +173,13 @@ function resolveLancedbCfg() {
         cachedDbPathKey = null;
         return fromDisk;
     }
-    throw new Error("memory-lancedb-dreaming: LanceDB config not cached and disk fallback failed — ensure memory-lancedb is installed and configured in ~/.openclaw/openclaw.json");
+    throw new Error(`memory-lancedb-dreaming: LanceDB config not cached and disk fallback failed — ${LANCEDB_CONFIG_HELP}`);
 }
 export function getCachedLancedbConfig() {
     return cachedLancedbCfg;
+}
+export function getResolvedLanceDbPluginId() {
+    return cachedLancedbPluginId ?? cachedLancedbCfg?.pluginId ?? null;
 }
 export function createDreamingDb() {
     const cfg = resolveLancedbCfg();

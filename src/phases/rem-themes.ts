@@ -1,0 +1,168 @@
+import { createHash } from "node:crypto";
+import type { RemConfig } from "../config.js";
+import type { LanceMemoryEntry } from "../memory-db.js";
+import { runDreamingTextPrompt } from "../llm-subagent.js";
+import type { PluginLogger } from "../cron.js";
+import type { LlmCompleteFn, SubagentRuntime } from "../types.js";
+
+export type RemCluster = {
+  tag: string;
+  strength: number;
+  count: number;
+  memories: LanceMemoryEntry[];
+};
+
+const THEME_NAMING_SYSTEM_PROMPT = [
+  "You name thematic clusters in a memory reflection journal.",
+  "For each numbered cluster, output exactly one line:",
+  "中文主题名（4-8字） / English Topic Name",
+  "Use concise, semantic names — not category labels like fact or other.",
+  "Output only the numbered lines, no extra commentary.",
+].join("\n");
+
+const THEME_LINE_RE =
+  /^\s*(?:\d+[\.\)、]\s*)?(.+?)\s*\/\s*(.+?)\s*$/;
+
+function buildThemeNamingSessionKey(workspaceDir: string, nowMs: number): string {
+  const workspaceHash = createHash("sha1").update(workspaceDir).digest("hex").slice(0, 12);
+  return `dreaming-rem-themes-lancedb-${workspaceHash}-${nowMs}`;
+}
+
+function buildThemeNamingPrompt(clusters: RemCluster[]): string {
+  const lines = [
+    "以下是今天记忆观测中的一组聚类话题，请为每组生成一个4-8字的中文主题名和一个对应的英文主题名：",
+    "",
+  ];
+  for (let i = 0; i < clusters.length; i += 1) {
+    const cluster = clusters[i]!;
+    lines.push(`## 聚类 ${i + 1}（标签: ${cluster.tag}，${cluster.count} 条记忆）`);
+    for (const memory of cluster.memories.slice(0, 8)) {
+      const snippet = memory.text.trim().slice(0, 160);
+      lines.push(`- ${snippet}`);
+    }
+    lines.push("");
+  }
+  lines.push("输出格式（每组一行）：中文主题名 / English Topic Name");
+  return lines.join("\n");
+}
+
+function parseThemeLines(
+  raw: string,
+  clusterCount: number
+): Array<{ zh: string; en: string } | null> {
+  const lines = raw
+    .split("\n")
+    .map((line) => line.trim())
+    .filter((line) => line.length > 0);
+  const parsed: Array<{ zh: string; en: string } | null> = [];
+
+  for (const line of lines) {
+    const match = line.match(THEME_LINE_RE);
+    if (!match) continue;
+    const zh = match[1]?.trim();
+    const en = match[2]?.trim();
+    if (zh && en) parsed.push({ zh, en });
+  }
+
+  while (parsed.length < clusterCount) parsed.push(null);
+  return parsed.slice(0, clusterCount);
+}
+
+function summarizeCoverage(cluster: RemCluster): string {
+  const top = cluster.memories
+    .slice()
+    .sort((a, b) => b.importance - a.importance)[0];
+  const hint = top?.text.trim().slice(0, 48);
+  if (hint) return `${cluster.count} 条记忆（${hint}${hint.length >= 48 ? "…" : ""}）`;
+  return `${cluster.count} 条记忆`;
+}
+
+export function buildTagClusters(
+  entries: LanceMemoryEntry[],
+  limit: number,
+  minPatternStrength: number
+): RemCluster[] {
+  const tagToMemories = new Map<string, LanceMemoryEntry[]>();
+  for (const entry of entries) {
+    const tag = entry.category?.trim() || "other";
+    const list = tagToMemories.get(tag) ?? [];
+    list.push(entry);
+    tagToMemories.set(tag, list);
+  }
+
+  return [...tagToMemories.entries()]
+    .map(([tag, memories]) => ({
+      tag,
+      count: memories.length,
+      strength: Math.min(1, (memories.length / Math.max(1, entries.length)) * 2),
+      memories,
+    }))
+    .filter((cluster) => cluster.strength >= minPatternStrength)
+    .sort(
+      (a, b) =>
+        b.strength - a.strength ||
+        b.count - a.count ||
+        a.tag.localeCompare(b.tag)
+    )
+    .slice(0, limit);
+}
+
+export function formatRemReflectionLines(
+  clusters: RemCluster[],
+  themeNames: Array<{ zh: string; en: string } | null>
+): string[] {
+  if (clusters.length === 0) return ["- No strong patterns surfaced."];
+
+  const lines: string[] = [];
+  for (let i = 0; i < clusters.length; i += 1) {
+    const cluster = clusters[i]!;
+    const named = themeNames[i];
+    if (named) {
+      lines.push(
+        `- Theme: ${named.zh} / ${named.en} (${cluster.strength.toFixed(2)})`
+      );
+      lines.push(`  - 覆盖: ${summarizeCoverage(cluster)}`);
+    } else {
+      lines.push(
+        `- Theme: \`${cluster.tag}\` kept surfacing across ${cluster.count} memories.`
+      );
+      lines.push(`  - confidence: ${cluster.strength.toFixed(2)}`);
+      lines.push(`  - evidence: ${cluster.memories
+        .slice(0, 3)
+        .map((m) => m.id.slice(0, 8))
+        .join(", ")}`);
+      lines.push(`  - note: reflection`);
+    }
+  }
+  return lines;
+}
+
+export async function nameRemClusters(params: {
+  clusters: RemCluster[];
+  config: RemConfig;
+  subagent?: SubagentRuntime;
+  llmComplete?: LlmCompleteFn;
+  workspaceDir: string;
+  nowMs: number;
+  logger: PluginLogger;
+}): Promise<Array<{ zh: string; en: string } | null>> {
+  const empty = params.clusters.map(() => null);
+  if (!params.config.model?.trim() || params.clusters.length === 0) return empty;
+  if (!params.subagent && !params.llmComplete) return empty;
+
+  const sessionKey = buildThemeNamingSessionKey(params.workspaceDir, params.nowMs);
+  const message = buildThemeNamingPrompt(params.clusters);
+  const raw = await runDreamingTextPrompt({
+    subagent: params.subagent,
+    llmComplete: params.llmComplete,
+    sessionKey,
+    message,
+    systemPrompt: THEME_NAMING_SYSTEM_PROMPT,
+    model: params.config.model,
+    logger: params.logger,
+    logLabel: "REM theme naming",
+  });
+
+  if (!raw) return empty;
+  return parseThemeLines(raw, params.clusters.length);
+}

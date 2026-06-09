@@ -2,7 +2,7 @@
 # Pre-publish smoke check for memory-lancedb-dreaming (run on Ubuntu with OpenClaw)
 set -euo pipefail
 
-TGZ="${1:-memory-lancedb-dreaming-0.2.3.tgz}"
+TGZ="${1:-memory-lancedb-dreaming-0.2.4.tgz}"
 PLUGIN_DIR="${OPENCLAW_PLUGINS_DIR:-$HOME/.openclaw/plugins}/memory-lancedb-dreaming"
 PASS=0
 FAIL=0
@@ -17,7 +17,7 @@ echo ""
 # 1. tarball integrity
 if [[ -f "$TGZ" ]]; then ok "tarball exists"; else bad "tarball missing: $TGZ"; fi
 VER=$(tar -xOf "$TGZ" package/package.json 2>/dev/null | grep '"version"' | head -1 || true)
-if echo "$VER" | grep -q '0.2.3'; then ok "version 0.2.3 in package.json"; else bad "version mismatch: $VER"; fi
+if echo "$VER" | grep -q '0.2.4'; then ok "version 0.2.4 in package.json"; else bad "version mismatch: $VER"; fi
 
 # 2. README sections
 if tar -xOf "$TGZ" package/README.md | grep -qE "## (为什么需要|痛点)|memory 插槽"; then ok "README value-prop section present"; else bad "README value-prop section missing"; fi
