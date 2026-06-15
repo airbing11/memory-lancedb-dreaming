@@ -1,6 +1,6 @@
 {
   "name": "memory-lancedb-dreaming",
-  "version": "0.2.6",
+  "version": "0.2.7",
   "description": "Light/REM/Deep memory consolidation for OpenClaw agents using LanceDB / memory-lancedb-pro, with bilingual DREAMS.md and optional daily report push.",
   "type": "module",
   "main": "./dist/index.js",

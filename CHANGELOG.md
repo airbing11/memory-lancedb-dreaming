@@ -1,5 +1,17 @@
 # Changelog
 
+## 0.2.7 — 2026-06-15
+
+### Changed
+
+- Metadata-only release: make GitHub / ClawHub listing copy English-first and bilingual.
+- Update package and plugin descriptions for clearer international discovery.
+
+### Notes
+
+- No runtime behavior changes from 0.2.6.
+- 0.2.6 remains the functional release that fixed duplicate daily report pushes and REM repetition.
+
 ## 0.2.6 — 2026-06-13
 
 ### Fixed
