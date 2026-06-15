@@ -10,6 +10,18 @@ export const RemDreamingConfigSchema = Type.Object({
     lookbackDays: Type.Number({ default: 7, minimum: 1, maximum: 90 }),
     limit: Type.Number({ default: 10, minimum: 1, maximum: 50 }),
     minPatternStrength: Type.Number({ default: 0.45, minimum: 0.1, maximum: 1.0 }),
+    lastingTruthCooldownDays: Type.Number({
+        default: 7,
+        minimum: 1,
+        maximum: 30,
+        description: "Skip memory IDs recently shown under Possible Lasting Truths",
+    }),
+    clusterSpotlightCooldownDays: Type.Number({
+        default: 5,
+        minimum: 1,
+        maximum: 30,
+        description: "Rotate cluster exemplar memories recently used in REM reflections",
+    }),
     model: Type.Optional(Type.String({ description: "Model override for REM semantic theme naming" })),
 });
 export const DeepDreamingConfigSchema = Type.Object({
@@ -30,6 +42,10 @@ export const NarrativeLanguageSchema = Type.Union([
 export const DailyReportDeliverySchema = Type.Object({
     channel: Type.String({ minLength: 1 }),
     to: Type.String({ minLength: 1 }),
+    pushOn: Type.Optional(Type.Union([Type.Literal("always"), Type.Literal("changed")], {
+        default: "changed",
+        description: "Push when content changes (changed) or every run (always)",
+    })),
     mode: Type.Optional(Type.Union([Type.Literal("announce"), Type.Literal("direct"), Type.Literal("webhook")])),
     threadId: Type.Optional(Type.Union([Type.String(), Type.Number()])),
     accountId: Type.Optional(Type.String()),
@@ -75,7 +91,7 @@ export const DEFAULT_DREAMING_CONFIG = {
     cron: "0 3 * * *",
     timezone: "Asia/Shanghai",
     light: { enabled: true, lookbackDays: 2, limit: 100 },
-    rem: { enabled: true, lookbackDays: 7, limit: 10, minPatternStrength: 0.45 },
+    rem: { enabled: true, lookbackDays: 7, limit: 10, minPatternStrength: 0.45, lastingTruthCooldownDays: 7, clusterSpotlightCooldownDays: 5 },
     deep: {
         enabled: true,
         maxPromotions: 5,

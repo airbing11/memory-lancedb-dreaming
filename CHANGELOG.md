@@ -1,5 +1,26 @@
 # Changelog
 
+## 0.2.6 — 2026-06-13
+
+### Fixed
+
+- **Duplicate daily report push:** dreaming pipeline no longer pushes after Light/REM/Deep; IM push is owned solely by the `Dreaming Daily Report` cron.
+- **Cron collision:** when `dailyReport.cron` equals main dreaming `cron`, daily report cron auto-staggers (e.g. `0 3 * * *` → `30 3 * * *`).
+- **REM content repetition:** `Possible Lasting Truths` skip memory IDs shown within `rem.lastingTruthCooldownDays` (default 7); cluster exemplars rotate via `rem.clusterSpotlightCooldownDays` (default 5). History: `memory/.dreams/lancedb-dreaming-rem-history.json`.
+
+### Added
+
+- **`dailyReport.delivery.pushOn`:** `changed` (default) skips IM push when report fingerprint unchanged; `always` pushes every run. State: `memory/.dreams/lancedb-dreaming-daily-delivery.json`.
+- Skip IM push when no dreaming phases ran (`no_phases`).
+- `dreaming_status.dailyReport.effectiveCron` for reconciled cron expression.
+- **`rem.lastingTruthCooldownDays`**, **`rem.clusterSpotlightCooldownDays`** config knobs.
+
+### Notes
+
+- Narrative (`DREAMS.md`) unchanged — still nightly LLM prose at workspace root.
+- REM still groups by memory `category`; cooldown/rotation reduces repeated truths and stale cluster anchors.
+- Set `pushOn: "always"` if you want a daily IM ping even when REM summary is stable.
+
 ## 0.2.4 — 2026-06-09
 
 ### Fixed

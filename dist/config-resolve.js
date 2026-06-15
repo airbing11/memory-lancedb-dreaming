@@ -107,12 +107,15 @@ export function resolveDreamingConfig(seed, api) {
     const dailyReportRaw = asRecord(raw.dailyReport);
     const dailyReportLanguages = normalizeLanguages(dailyReportRaw?.languages) ?? DEFAULT_DREAMING_CONFIG.dailyReport.languages;
     const deliveryRaw = asRecord(dailyReportRaw?.delivery);
+    const pushOnRaw = normalizeTrimmedString(deliveryRaw?.pushOn);
+    const pushOn = pushOnRaw === "always" || pushOnRaw === "changed" ? pushOnRaw : "changed";
     const delivery = deliveryRaw &&
         normalizeTrimmedString(deliveryRaw.channel) &&
         normalizeTrimmedString(deliveryRaw.to)
         ? {
             channel: normalizeTrimmedString(deliveryRaw.channel),
             to: normalizeTrimmedString(deliveryRaw.to),
+            pushOn,
             ...(normalizeTrimmedString(deliveryRaw.mode)
                 ? { mode: normalizeTrimmedString(deliveryRaw.mode) }
                 : {}),

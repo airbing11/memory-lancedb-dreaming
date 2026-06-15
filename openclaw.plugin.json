@@ -2,7 +2,7 @@
   "id": "memory-lancedb-dreaming",
   "name": "Dreaming (LanceDB)",
   "description": "Light/REM/Deep dreaming for memory-lancedb: narrative DREAMS.md, promotion, and daily report (zero-LLM file summary + optional push to Feishu/WeCom/etc. via dailyReport.delivery).",
-  "version": "0.2.4",
+  "version": "0.2.6",
   "activation": {
     "onStartup": true
   },
@@ -56,6 +56,8 @@
           "lookbackDays": { "type": "number", "default": 7 },
           "limit": { "type": "number", "default": 10 },
           "minPatternStrength": { "type": "number", "default": 0.45 },
+          "lastingTruthCooldownDays": { "type": "number", "default": 7 },
+          "clusterSpotlightCooldownDays": { "type": "number", "default": 5 },
           "model": {
             "type": "string",
             "description": "Model override for REM semantic theme naming (alias: rem.execution.model)"
@@ -132,6 +134,12 @@
               "channel": { "type": "string" },
               "to": { "type": "string" },
               "mode": { "type": "string", "enum": ["announce", "direct", "webhook"] },
+              "pushOn": {
+                "type": "string",
+                "enum": ["always", "changed"],
+                "default": "changed",
+                "description": "Push when report content changes (changed) or every scheduled run (always)"
+              },
               "threadId": {},
               "accountId": { "type": "string" }
             },
@@ -180,6 +188,10 @@
     "dailyReport.delivery.to": {
       "label": "Daily Report Target",
       "help": "Delivery target for the configured channel"
+    },
+    "dailyReport.delivery.pushOn": {
+      "label": "Daily Report Push Policy",
+      "help": "changed (default): skip IM push when report content is unchanged; always: push every run"
     },
     "narrative.model": {
       "label": "Narrative Model",

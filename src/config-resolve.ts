@@ -154,6 +154,9 @@ export function resolveDreamingConfig(
   const dailyReportLanguages =
     normalizeLanguages(dailyReportRaw?.languages) ?? DEFAULT_DREAMING_CONFIG.dailyReport.languages;
   const deliveryRaw = asRecord(dailyReportRaw?.delivery);
+  const pushOnRaw = normalizeTrimmedString(deliveryRaw?.pushOn);
+  const pushOn: "always" | "changed" =
+    pushOnRaw === "always" || pushOnRaw === "changed" ? pushOnRaw : "changed";
   const delivery =
     deliveryRaw &&
     normalizeTrimmedString(deliveryRaw.channel) &&
@@ -161,6 +164,7 @@ export function resolveDreamingConfig(
       ? {
           channel: normalizeTrimmedString(deliveryRaw.channel)!,
           to: normalizeTrimmedString(deliveryRaw.to)!,
+          pushOn,
           ...(normalizeTrimmedString(deliveryRaw.mode)
             ? { mode: normalizeTrimmedString(deliveryRaw.mode) as "announce" | "direct" | "webhook" }
             : {}),

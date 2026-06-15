@@ -18,6 +18,7 @@ import {
 import {
   reconcileManagedDreamingCron,
   resolveCronServiceFromCandidate,
+  resolveEffectiveDailyReportCronExpr,
   type CronService,
 } from "./cron.js";
 import {
@@ -41,12 +42,15 @@ import {
 import {
   buildSnapshotFromPipeline,
   deliverDailyReportMessage,
+  evaluateDailyReportDelivery,
   extractLatestNarrativeExcerpt,
   publishDailyReport,
   resolveReportDay,
+  writeDailyReportDeliveryState,
   writeDailyReportSnapshot,
 } from "./daily-report/index.js";
 import type { DailyReportPublishResult } from "./daily-report/types.js";
+import type { DailyReportDeliverySkipReason } from "./daily-report/delivery-policy.js";
 import { includesSystemEventToken } from "./utils.js";
 import {
   readDefaultWorkspaceFromDisk,
@@ -143,19 +147,65 @@ export default definePluginEntry({
         });
       };
 
-      const maybeDeliverDailyReport = async (published: DailyReportPublishResult) => {
+      const maybeDeliverDailyReport = async (
+        workspaceDir: string,
+        published: DailyReportPublishResult
+      ) => {
         const activeConfig = refreshConfig();
         const delivery = activeConfig.dailyReport.delivery;
-        if (!delivery) return { delivered: false as const };
+        if (!delivery) return { delivered: false as const, reason: "no_delivery" as const };
+
+        const decision = await evaluateDailyReportDelivery({
+          workspaceDir,
+          published,
+          pushOn: delivery.pushOn ?? "changed",
+        });
+        if (!decision.deliver) {
+          const reason = decision.reason;
+          if (reason === "unchanged") {
+            api.logger.info(
+              `memory-lancedb-dreaming: daily report content unchanged (fingerprint=${published.contentFingerprint}), skipping push`
+            );
+          } else if (reason === "no_phases") {
+            api.logger.info(
+              "memory-lancedb-dreaming: no dreaming phases ran for this report, skipping push"
+            );
+          }
+          return { delivered: false as const, reason };
+        }
+
         const result = await deliverDailyReportMessage({
           api,
           delivery,
           text: published.text,
           logger: api.logger,
         });
-        return result.ok
-          ? { delivered: true as const }
-          : { delivered: false as const, error: result.error };
+        if (!result.ok) {
+          return { delivered: false as const, error: result.error };
+        }
+
+        await writeDailyReportDeliveryState({
+          workspaceDir,
+          state: {
+            version: 1,
+            lastContentFingerprint: published.contentFingerprint,
+            lastDeliveredDay: published.day,
+            lastDeliveredAt: new Date().toISOString(),
+          },
+        }).catch((err) => {
+          api.logger.warn(
+            `memory-lancedb-dreaming: failed to record daily report delivery state: ${String(err)}`
+          );
+        });
+
+        return { delivered: true as const };
+      };
+
+      const describeSkippedDelivery = (reason: DailyReportDeliverySkipReason) => {
+        if (reason === "unchanged") {
+          return "memory-lancedb-dreaming: daily report written (unchanged, push skipped)";
+        }
+        return "memory-lancedb-dreaming: daily report written (no phases, push skipped)";
       };
 
       const runDailyReportDelivery = async (workspaceDir: string) => {
@@ -174,7 +224,7 @@ export default definePluginEntry({
             nowMs,
             logger: api.logger,
           });
-          const deliveryResult = await maybeDeliverDailyReport(published);
+          const deliveryResult = await maybeDeliverDailyReport(workspaceDir, published);
           return { ok: true as const, published, deliveryResult };
         } catch (err) {
           api.logger.error(
@@ -407,6 +457,17 @@ export default definePluginEntry({
                 reason: "memory-lancedb-dreaming: daily report delivered",
               };
             }
+            if (
+              reportRun.deliveryResult &&
+              "reason" in reportRun.deliveryResult &&
+              (reportRun.deliveryResult.reason === "unchanged" ||
+                reportRun.deliveryResult.reason === "no_phases")
+            ) {
+              return {
+                handled: true,
+                reason: describeSkippedDelivery(reportRun.deliveryResult.reason),
+              };
+            }
             if (reportRun.deliveryResult?.error) {
               api.logger.warn(
                 `memory-lancedb-dreaming: daily report delivery failed: ${reportRun.deliveryResult.error}`
@@ -442,22 +503,15 @@ export default definePluginEntry({
             `memory-lancedb-dreaming: dreaming phases completed (light=${result.lightCount}, rem=${result.remCount}, promoted=${result.promotedCount}, narrative=${result.narrativeWritten})`
           );
           if (dailyReportPublished) {
-            const deliveryResult = await maybeDeliverDailyReport(dailyReportPublished);
-            if (deliveryResult.delivered) {
-              return {
-                handled: true,
-                reason: "memory-lancedb-dreaming: dreaming processed with daily report delivery",
-              };
-            }
-            if (deliveryResult.error) {
-              api.logger.warn(
-                `memory-lancedb-dreaming: daily report delivery after dreaming failed: ${deliveryResult.error}`
-              );
-            }
+            api.logger.info(
+              `memory-lancedb-dreaming: daily report written after pipeline (day=${dailyReportPublished.day}); delivery deferred to daily report cron`
+            );
           }
           return {
             handled: true,
-            reason: "memory-lancedb-dreaming: dreaming processed",
+            reason: dailyReportPublished
+              ? "memory-lancedb-dreaming: dreaming processed with daily report written"
+              : "memory-lancedb-dreaming: dreaming processed",
           };
         });
       } catch (err) {
@@ -532,6 +586,7 @@ export default definePluginEntry({
                 dailyReport: {
                   enabled: activeConfig.dailyReport.enabled,
                   cron: activeConfig.dailyReport.cron,
+                  effectiveCron: resolveEffectiveDailyReportCronExpr(activeConfig).expr,
                   languages: activeConfig.dailyReport.languages,
                   delivery: activeConfig.dailyReport.delivery ?? null,
                 },

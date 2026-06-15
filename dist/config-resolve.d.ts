@@ -11,6 +11,7 @@ export declare function summarizeDreamingConfig(config: DreamingConfig): {
     dailyReportEnabled: boolean;
     dailyReportCron: string;
     dailyReportDelivery: {
+        pushOn?: "always" | "changed" | undefined;
         mode?: "announce" | "direct" | "webhook" | undefined;
         threadId?: string | number | undefined;
         accountId?: string | undefined;

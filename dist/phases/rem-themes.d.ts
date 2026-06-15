@@ -7,6 +7,7 @@ export type RemCluster = {
     strength: number;
     count: number;
     memories: LanceMemoryEntry[];
+    spotlightMemories: LanceMemoryEntry[];
 };
 export declare function buildTagClusters(entries: LanceMemoryEntry[], limit: number, minPatternStrength: number): RemCluster[];
 export declare function formatRemReflectionLines(clusters: RemCluster[], themeNames: Array<{

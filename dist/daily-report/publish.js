@@ -2,6 +2,7 @@ import fs from "node:fs/promises";
 import path from "node:path";
 import { appendDailyMemoryBlock } from "../phases/reports.js";
 import { buildSnapshotFromWorkspace } from "./extract.js";
+import { computeDailyReportContentFingerprint } from "./fingerprint.js";
 import { renderDailyReport } from "./render.js";
 import { readDailyReportSnapshot, writeDailyReportSnapshot } from "./snapshot.js";
 export const DAILY_REPORT_START_MARKER = "<!-- openclaw:dreaming:daily-report:start -->";
@@ -42,6 +43,14 @@ export async function publishDailyReport(params) {
         text,
     });
     params.logger?.info(`memory-lancedb-dreaming: daily report written (day=${params.day}, archive=${archivePath})`);
-    return { day: params.day, text, dailyMemoryPath, archivePath, snapshotPath };
+    return {
+        day: params.day,
+        text,
+        dailyMemoryPath,
+        archivePath,
+        snapshotPath,
+        snapshot,
+        contentFingerprint: computeDailyReportContentFingerprint(snapshot),
+    };
 }
 //# sourceMappingURL=publish.js.map

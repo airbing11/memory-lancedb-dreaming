@@ -4,6 +4,7 @@ import type { DailyReportConfig } from "../config.js";
 import { appendDailyMemoryBlock } from "../phases/reports.js";
 import type { PluginLogger } from "../cron.js";
 import { buildSnapshotFromWorkspace } from "./extract.js";
+import { computeDailyReportContentFingerprint } from "./fingerprint.js";
 import { renderDailyReport } from "./render.js";
 import { readDailyReportSnapshot, writeDailyReportSnapshot } from "./snapshot.js";
 import type { DailyReportPublishResult, DailyReportSnapshot } from "./types.js";
@@ -75,5 +76,13 @@ export async function publishDailyReport(params: {
     `memory-lancedb-dreaming: daily report written (day=${params.day}, archive=${archivePath})`
   );
 
-  return { day: params.day, text, dailyMemoryPath, archivePath, snapshotPath };
+  return {
+    day: params.day,
+    text,
+    dailyMemoryPath,
+    archivePath,
+    snapshotPath,
+    snapshot,
+    contentFingerprint: computeDailyReportContentFingerprint(snapshot),
+  };
 }

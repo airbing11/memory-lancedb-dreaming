@@ -130,6 +130,10 @@ export async function reconcileManagedDreamingCron(params) {
         pruneLog: "memory-lancedb-dreaming: pruned duplicate managed dreaming cron jobs.",
     });
     removed += dreaming.removed;
+    const dailyReportCron = resolveEffectiveDailyReportCronExpr(params.config);
+    if (dailyReportCron.collidedWithDreamingCron) {
+        params.logger.warn(`memory-lancedb-dreaming: dailyReport.cron matches dreaming cron (${params.config.cron}); auto-staggered daily report to ${dailyReportCron.expr}`);
+    }
     const daily = await reconcileSingleManagedCron({
         cron: params.cron,
         config: params.config,
@@ -220,17 +224,38 @@ async function reconcileSingleManagedCron(params) {
 function resolveManagedDailyReportDescription(config) {
     const delivery = config.dailyReport.delivery;
     const deliveryHint = delivery ? `delivery=${delivery.channel}` : "file-only";
-    return `${MANAGED_DAILY_REPORT_CRON_TAG} Daily report (${deliveryHint}, cron=${config.dailyReport.cron}).`;
+    const { expr, collidedWithDreamingCron } = resolveEffectiveDailyReportCronExpr(config);
+    const cronHint = collidedWithDreamingCron
+        ? `cron=${expr} (staggered from ${config.dailyReport.cron})`
+        : `cron=${expr}`;
+    return `${MANAGED_DAILY_REPORT_CRON_TAG} Daily report (${deliveryHint}, ${cronHint}).`;
+}
+/** Avoid daily report cron firing before/at the same instant as the dreaming pipeline. */
+export function resolveEffectiveDailyReportCronExpr(config) {
+    const dreamingCron = config.cron.trim();
+    const dailyCron = config.dailyReport.cron.trim();
+    if (dreamingCron !== dailyCron) {
+        return { expr: dailyCron, collidedWithDreamingCron: false };
+    }
+    const parts = dailyCron.split(/\s+/);
+    if (parts.length === 5 && parts[0] === "0" && /^\d+$/.test(parts[1] ?? "")) {
+        return {
+            expr: `30 ${parts[1]} ${parts[2]} ${parts[3]} ${parts[4]}`,
+            collidedWithDreamingCron: true,
+        };
+    }
+    return { expr: "0 4 * * *", collidedWithDreamingCron: true };
 }
 export function buildManagedDailyReportCronJob(config) {
     const tz = config.dailyReport.timezone ?? config.timezone;
+    const { expr } = resolveEffectiveDailyReportCronExpr(config);
     return {
         name: MANAGED_DAILY_REPORT_CRON_NAME,
         description: resolveManagedDailyReportDescription(config),
         enabled: true,
         schedule: {
             kind: "cron",
-            expr: config.dailyReport.cron,
+            expr,
             ...(tz ? { tz } : {}),
         },
         // systemEvent requires main; channel delivery is done in-plugin (see daily-report/deliver.ts).

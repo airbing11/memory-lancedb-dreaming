@@ -10,6 +10,7 @@ export type RemCluster = {
   strength: number;
   count: number;
   memories: LanceMemoryEntry[];
+  spotlightMemories: LanceMemoryEntry[];
 };
 
 const THEME_NAMING_SYSTEM_PROMPT = [
@@ -36,7 +37,7 @@ function buildThemeNamingPrompt(clusters: RemCluster[]): string {
   for (let i = 0; i < clusters.length; i += 1) {
     const cluster = clusters[i]!;
     lines.push(`## 聚类 ${i + 1}（标签: ${cluster.tag}，${cluster.count} 条记忆）`);
-    for (const memory of cluster.memories.slice(0, 8)) {
+    for (const memory of cluster.spotlightMemories.slice(0, 8)) {
       const snippet = memory.text.trim().slice(0, 160);
       lines.push(`- ${snippet}`);
     }
@@ -69,7 +70,7 @@ function parseThemeLines(
 }
 
 function summarizeCoverage(cluster: RemCluster): string {
-  const top = cluster.memories
+  const top = cluster.spotlightMemories[0] ?? cluster.memories
     .slice()
     .sort((a, b) => b.importance - a.importance)[0];
   const hint = top?.text.trim().slice(0, 48);
@@ -96,6 +97,7 @@ export function buildTagClusters(
       count: memories.length,
       strength: Math.min(1, (memories.length / Math.max(1, entries.length)) * 2),
       memories,
+      spotlightMemories: memories,
     }))
     .filter((cluster) => cluster.strength >= minPatternStrength)
     .sort(

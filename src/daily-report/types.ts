@@ -21,4 +21,6 @@ export type DailyReportPublishResult = {
   dailyMemoryPath: string;
   archivePath: string;
   snapshotPath: string;
+  snapshot: DailyReportSnapshot;
+  contentFingerprint: string;
 };

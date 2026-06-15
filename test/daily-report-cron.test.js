@@ -3,9 +3,9 @@ import { describe, it } from "node:test";
 import {
   buildManagedDailyReportCronJob,
   buildManagedDreamingCronJob,
+  resolveEffectiveDailyReportCronExpr,
 } from "../dist/cron.js";
 import { DAILY_REPORT_TRIGGER_TOKEN, DREAMING_TRIGGER_TOKEN } from "../dist/constants.js";
-
 function configWithDelivery() {
   return {
     enabled: true,
@@ -52,5 +52,15 @@ describe("managed cron jobs (no cron.delivery — OpenClaw forbids main+delivery
     assert.equal(job.sessionTarget, "main");
     assert.equal(job.payload?.text, DREAMING_TRIGGER_TOKEN);
     assert.equal(job.delivery, undefined);
+  });
+
+  it("staggers daily report cron when it collides with dreaming cron", () => {
+    const config = configWithDelivery();
+    config.dailyReport.cron = "0 3 * * *";
+    const resolved = resolveEffectiveDailyReportCronExpr(config);
+    assert.equal(resolved.collidedWithDreamingCron, true);
+    assert.equal(resolved.expr, "30 3 * * *");
+    const job = buildManagedDailyReportCronJob(config);
+    assert.equal(job.schedule?.expr, "30 3 * * *");
   });
 });

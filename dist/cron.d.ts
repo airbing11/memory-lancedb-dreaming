@@ -74,6 +74,11 @@ export declare function reconcileManagedDreamingCron(params: {
     config: DreamingConfig;
     logger: PluginLogger;
 }): Promise<ReconcileResult>;
+/** Avoid daily report cron firing before/at the same instant as the dreaming pipeline. */
+export declare function resolveEffectiveDailyReportCronExpr(config: DreamingConfig): {
+    expr: string;
+    collidedWithDreamingCron: boolean;
+};
 export declare function buildManagedDailyReportCronJob(config: DreamingConfig): Omit<CronJob, "id">;
 export declare function resolveCronServiceFromCandidate(candidate: unknown): CronService | null;
 export declare function resolveCronFromGatewayStartupEvent(event: unknown): CronService | null;

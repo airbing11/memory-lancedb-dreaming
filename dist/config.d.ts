@@ -11,6 +11,8 @@ export declare const RemDreamingConfigSchema: Type.TObject<{
     lookbackDays: Type.TNumber;
     limit: Type.TNumber;
     minPatternStrength: Type.TNumber;
+    lastingTruthCooldownDays: Type.TNumber;
+    clusterSpotlightCooldownDays: Type.TNumber;
     model: Type.TOptional<Type.TString>;
 }>;
 export declare const DeepDreamingConfigSchema: Type.TObject<{
@@ -28,6 +30,7 @@ export declare const NarrativeLanguageSchema: Type.TUnion<[Type.TLiteral<"zh">, 
 export declare const DailyReportDeliverySchema: Type.TObject<{
     channel: Type.TString;
     to: Type.TString;
+    pushOn: Type.TOptional<Type.TUnion<[Type.TLiteral<"always">, Type.TLiteral<"changed">]>>;
     mode: Type.TOptional<Type.TUnion<[Type.TLiteral<"announce">, Type.TLiteral<"direct">, Type.TLiteral<"webhook">]>>;
     threadId: Type.TOptional<Type.TUnion<[Type.TString, Type.TNumber]>>;
     accountId: Type.TOptional<Type.TString>;
@@ -40,6 +43,7 @@ export declare const DailyReportConfigSchema: Type.TObject<{
     delivery: Type.TOptional<Type.TObject<{
         channel: Type.TString;
         to: Type.TString;
+        pushOn: Type.TOptional<Type.TUnion<[Type.TLiteral<"always">, Type.TLiteral<"changed">]>>;
         mode: Type.TOptional<Type.TUnion<[Type.TLiteral<"announce">, Type.TLiteral<"direct">, Type.TLiteral<"webhook">]>>;
         threadId: Type.TOptional<Type.TUnion<[Type.TString, Type.TNumber]>>;
         accountId: Type.TOptional<Type.TString>;
@@ -64,6 +68,8 @@ export declare const DreamingConfigSchema: Type.TObject<{
         lookbackDays: Type.TNumber;
         limit: Type.TNumber;
         minPatternStrength: Type.TNumber;
+        lastingTruthCooldownDays: Type.TNumber;
+        clusterSpotlightCooldownDays: Type.TNumber;
         model: Type.TOptional<Type.TString>;
     }>;
     deep: Type.TObject<{
@@ -90,6 +96,7 @@ export declare const DreamingConfigSchema: Type.TObject<{
         delivery: Type.TOptional<Type.TObject<{
             channel: Type.TString;
             to: Type.TString;
+            pushOn: Type.TOptional<Type.TUnion<[Type.TLiteral<"always">, Type.TLiteral<"changed">]>>;
             mode: Type.TOptional<Type.TUnion<[Type.TLiteral<"announce">, Type.TLiteral<"direct">, Type.TLiteral<"webhook">]>>;
             threadId: Type.TOptional<Type.TUnion<[Type.TString, Type.TNumber]>>;
             accountId: Type.TOptional<Type.TString>;

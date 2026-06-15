@@ -1,6 +1,6 @@
 export const DREAMING_TRIGGER_TOKEN = "__openclaw_memory_lancedb_dreaming_trigger__";
 
-export const PLUGIN_VERSION = "0.2.4";
+export const PLUGIN_VERSION = "0.2.6";
 
 export const DAILY_REPORT_TRIGGER_TOKEN = "__openclaw_memory_lancedb_dreaming_daily_report__";
 

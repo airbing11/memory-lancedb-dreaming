@@ -1,6 +1,6 @@
 # memory-lancedb-dreaming
 
-让 LanceDB 的记忆真正会做梦。**v0.2.4** 起按 `plugins.slots.memory` 自动读取 LanceDB 配置（支持 `memory-lancedb-pro`）；**v0.2.3** 起可选日报推送到飞书 / 企微等通道。
+让 LanceDB 的记忆真正会做梦。**v0.2.6** 修复日报双推、IM 相似去重，以及 REM Lasting Truths / 聚类 EXEMPLAR 跨天轮换；**v0.2.4** 起按 `plugins.slots.memory` 自动读取 LanceDB 配置。
 
 > **English:** OpenClaw has **one memory slot**; built-in **dreaming** runs under **memory-core**, not LanceDB vectors. This plugin keeps **memory-lancedb** / **lancedb-pro** as your store and restores the full Light → REM → Deep pipeline (LLM themes, promotion, bilingual `DREAMS.md`), plus an optional **daily report** pushed to your chat channel.
 
@@ -23,6 +23,8 @@
 只要配好 `channel` + `to`（例如飞书 `open_id`），日报会走 OpenClaw 官方出站通道 `sendDurableMessageBatch`，与 cron announce 同路径，**不消耗对话 LLM**。
 
 不想推送、只要文件：保持 `dailyReport.enabled: true`，**省略** `delivery` 即可。完全关闭日报：`dailyReport.enabled: false`。
+
+**v0.2.6+：** 推送默认 `delivery.pushOn: "changed"`；`dailyReport.cron` 与主 cron 相同时自动错开 30 分钟。REM 默认 7 天内不重复输出同一 Lasting Truth（`rem.lastingTruthCooldownDays`），聚类 exemplar 5 天轮换（`rem.clusterSpotlightCooldownDays`）。
 
 ## 为什么需要这个插件
 
@@ -330,7 +332,7 @@ MIT © 2026 airbing11
 
 ## 版本与变更
 
-- 当前推荐版本：**0.2.4**（memory-lancedb-pro 插槽兼容；**生产验收 GO 2026-06-09**）
+- 当前推荐版本：**0.2.6**（日报推送去重 + REM 内容轮换；0.2.4 插槽兼容已保留）
 - 变更记录：[CHANGELOG.md](./CHANGELOG.md)
 - 验收报告：[docs/v0.2.4-ACCEPTANCE-REPORT.md](./docs/v0.2.4-ACCEPTANCE-REPORT.md)
 - 发布步骤：[docs/RELEASE-0.2.4.md](./docs/RELEASE-0.2.4.md)
