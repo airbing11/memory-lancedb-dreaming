@@ -1,7 +1,7 @@
 {
   "id": "memory-lancedb-dreaming",
   "name": "Dreaming (LanceDB)",
-  "description": "Light/REM/Deep dreaming for memory-lancedb: narrative DREAMS.md, promotion, and daily report (zero-LLM file summary + optional push to Feishu/WeCom/etc. via dailyReport.delivery).",
+  "description": "Light/REM/Deep memory consolidation for LanceDB / memory-lancedb-pro: bilingual DREAMS.md, REM diversity, Deep promotion, and optional daily report push. 中文：为 LanceDB 记忆后端恢复梦境巩固与日报推送。",
   "version": "0.2.6",
   "activation": {
     "onStartup": true
