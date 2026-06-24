@@ -1,5 +1,6 @@
 import type { DreamingConfig } from "./config.js";
 import type { PluginLogger } from "./cron.js";
+import { countConsecutiveIdleDays, readDeepHistory } from "./deep-history.js";
 import type { MemoryDB } from "./memory-db.js";
 import { withDbRead } from "./lancedb-client.js";
 import { generateAndAppendDreamNarrative } from "./narrative.js";
@@ -7,6 +8,7 @@ import { runDeepSleep } from "./phases/deep.js";
 import { runLightSleep } from "./phases/light.js";
 import { runRemSleep } from "./phases/rem.js";
 import type { DreamingLlmRuntime } from "./types.js";
+import { formatDreamingDay } from "./utils.js";
 
 export type DreamingRunResult = {
   lightCount: number;
@@ -76,6 +78,30 @@ export async function runDreamingPipeline(params: {
     );
   }
 
+  // Detect a promotion drought from prior days (excludes today, which Deep
+  // writes later this run) to drive REM novelty mode.
+  const idleNoveltyAfterDays = params.config.deep.idleNoveltyAfterDays ?? 0;
+  let noveltyMode = false;
+  if (idleNoveltyAfterDays > 0) {
+    try {
+      const deepHistory = await readDeepHistory(params.workspaceDir);
+      const idleDays = countConsecutiveIdleDays({
+        history: deepHistory,
+        excludeDay: formatDreamingDay(nowMs, timezone),
+      });
+      noveltyMode = idleDays >= idleNoveltyAfterDays;
+      if (noveltyMode) {
+        params.logger.info(
+          `memory-lancedb-dreaming: REM novelty mode ON (Deep idle ${idleDays}d ≥ ${idleNoveltyAfterDays}d)`
+        );
+      }
+    } catch (err) {
+      params.logger.warn(
+        `memory-lancedb-dreaming: failed to read deep history for novelty mode: ${String(err)}`
+      );
+    }
+  }
+
   if (params.config.rem.enabled && (phase === "all" || phase === "rem")) {
     const rem = await runRemSleep({
       db: params.db,
@@ -87,6 +113,7 @@ export async function runDreamingPipeline(params: {
       subagent,
       llmComplete,
       logger: params.logger,
+      noveltyMode,
     });
     remCount = rem.memoryIds.length;
     remBodyLines = rem.bodyLines ?? [];
@@ -120,14 +147,18 @@ export async function runDreamingPipeline(params: {
     );
 
     if (params.config.narrative.enabled && (subagent || llmComplete)) {
-      if (promotedCount > 0 || rankedSnippets.length > 0) {
+      // Freshness gate (v0.2.8): only write a "promotion" narrative when there
+      // is something actually new (promotedCount > 0). On a 0-promotion day we
+      // no longer reuse stale ranked candidates — fall back to a snapshot of
+      // today's light material, or skip if nothing new surfaced.
+      if (promotedCount > 0) {
         narrativeWritten = await generateAndAppendDreamNarrative({
           subagent,
           llmComplete,
           workspaceDir: params.workspaceDir,
           config: params.config.narrative,
           mode: "promotion",
-          snippets: rankedSnippets.length > 0 ? rankedSnippets : promotionSnippets,
+          snippets: promotionSnippets.length > 0 ? promotionSnippets : rankedSnippets,
           promotions: promotionSnippets,
           themes: remThemes,
           nowMs,

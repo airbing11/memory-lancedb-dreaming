@@ -23,6 +23,14 @@ export declare function formatDreamingDay(epochMs: number, timezone: string): st
 export declare function cosineSimilarity(left: number[], right: number[]): number;
 export declare function tokenizeSnippet(snippet: string): Set<string>;
 export declare function jaccardSimilarity(left: string, right: string): number;
+/** Lowercase and strip punctuation/whitespace, keeping CJK + alphanumerics. */
+export declare function normalizeTextForCompare(value: string): string;
+/**
+ * Similarity (0-1) that handles both Latin and CJK text. Uses the max of
+ * token-level Jaccard (good for English) and character-bigram Jaccard (good for
+ * Chinese), so "同一主题、不同措辞" still scores high enough to dedupe.
+ */
+export declare function textSimilarityCjkAware(left: string, right: string): number;
 export declare function hashQuery(value: string): string;
 export declare function createAsyncLock(): <T>(fn: () => Promise<T>) => Promise<T>;
 export declare function withTrailingNewline(content: string): string;

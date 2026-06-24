@@ -13,6 +13,9 @@ export declare const RemDreamingConfigSchema: Type.TObject<{
     minPatternStrength: Type.TNumber;
     lastingTruthCooldownDays: Type.TNumber;
     clusterSpotlightCooldownDays: Type.TNumber;
+    truthDedupeWindowDays: Type.TNumber;
+    truthSimilarityThreshold: Type.TNumber;
+    excludePromoted: Type.TBoolean;
     model: Type.TOptional<Type.TString>;
 }>;
 export declare const DeepDreamingConfigSchema: Type.TObject<{
@@ -25,6 +28,7 @@ export declare const DeepDreamingConfigSchema: Type.TObject<{
     minUniqueQueries: Type.TNumber;
     recencyHalfLifeDays: Type.TNumber;
     maxAgeDays: Type.TNumber;
+    idleNoveltyAfterDays: Type.TNumber;
 }>;
 export declare const NarrativeLanguageSchema: Type.TUnion<[Type.TLiteral<"zh">, Type.TLiteral<"en">]>;
 export declare const DailyReportDeliverySchema: Type.TObject<{
@@ -70,6 +74,9 @@ export declare const DreamingConfigSchema: Type.TObject<{
         minPatternStrength: Type.TNumber;
         lastingTruthCooldownDays: Type.TNumber;
         clusterSpotlightCooldownDays: Type.TNumber;
+        truthDedupeWindowDays: Type.TNumber;
+        truthSimilarityThreshold: Type.TNumber;
+        excludePromoted: Type.TBoolean;
         model: Type.TOptional<Type.TString>;
     }>;
     deep: Type.TObject<{
@@ -82,6 +89,7 @@ export declare const DreamingConfigSchema: Type.TObject<{
         minUniqueQueries: Type.TNumber;
         recencyHalfLifeDays: Type.TNumber;
         maxAgeDays: Type.TNumber;
+        idleNoveltyAfterDays: Type.TNumber;
     }>;
     narrative: Type.TObject<{
         enabled: Type.TBoolean;

@@ -9,6 +9,10 @@ export type RemCluster = {
     memories: LanceMemoryEntry[];
     spotlightMemories: LanceMemoryEntry[];
 };
+export declare function parseThemeLines(raw: string, clusterCount: number): Array<{
+    zh: string;
+    en: string;
+} | null>;
 export declare function buildTagClusters(entries: LanceMemoryEntry[], limit: number, minPatternStrength: number): RemCluster[];
 export declare function formatRemReflectionLines(clusters: RemCluster[], themeNames: Array<{
     zh: string;

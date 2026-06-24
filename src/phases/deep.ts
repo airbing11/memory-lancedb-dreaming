@@ -2,6 +2,7 @@ import fs from "node:fs/promises";
 import path from "node:path";
 import { resolveDeepConfig, type DeepConfig } from "../config.js";
 import { PROMOTION_MARKER_PREFIX } from "../constants.js";
+import { appendDeepHistoryRun } from "../deep-history.js";
 import type { MemoryDB } from "../memory-db.js";
 import { readDreamingState, writeDreamingState } from "../state.js";
 import type { PromotionCandidate } from "../types.js";
@@ -107,6 +108,12 @@ export async function runDeepSleep(params: {
     bodyLines,
     nowMs: params.nowMs,
     timezone: params.timezone,
+  });
+
+  await appendDeepHistoryRun({
+    workspaceDir: params.workspaceDir,
+    day: formatDreamingDay(params.nowMs, params.timezone),
+    promoted: toAppend.length,
   });
 
   return {

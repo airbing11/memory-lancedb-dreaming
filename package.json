@@ -1,7 +1,7 @@
 {
   "name": "memory-lancedb-dreaming",
-  "version": "0.2.7",
-  "description": "Light/REM/Deep memory consolidation for OpenClaw agents using LanceDB / memory-lancedb-pro, with bilingual DREAMS.md and optional daily report push.",
+  "version": "0.2.8",
+  "description": "Dreaming plugin for memory-lancedb — Light/REM/Deep phases, DREAMS.md, daily report with optional channel push (Feishu/WeCom/etc.).",
   "type": "module",
   "main": "./dist/index.js",
   "files": [
@@ -9,7 +9,8 @@
     "openclaw.plugin.json",
     "README.md",
     "scripts/install.sh",
-    "scripts/verify-smoke.sh"
+    "scripts/verify-smoke.sh",
+    "scripts/doctor.sh"
   ],
   "scripts": {
     "build": "tsc",

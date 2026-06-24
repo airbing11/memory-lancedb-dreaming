@@ -47,7 +47,25 @@ function buildThemeNamingPrompt(clusters: RemCluster[]): string {
   return lines.join("\n");
 }
 
-function parseThemeLines(
+/**
+ * Reject lines where the model echoed the prompt's format template/placeholder
+ * (e.g. "中文主题名（4-8字） / English Topic Name") instead of a real theme.
+ */
+function isPlaceholderTheme(zh: string, en: string): boolean {
+  const zhLower = zh.toLowerCase();
+  const enLower = en.toLowerCase();
+  const zhPlaceholder =
+    zh.includes("主题名") ||
+    zh.includes("中文主题") ||
+    /[（(]\s*\d+\s*[-~]\s*\d+\s*字\s*[）)]/.test(zh);
+  const enPlaceholder =
+    enLower.includes("english topic name") ||
+    enLower === "topic name" ||
+    enLower.includes("topic name") && enLower.startsWith("english");
+  return zhPlaceholder || enPlaceholder;
+}
+
+export function parseThemeLines(
   raw: string,
   clusterCount: number
 ): Array<{ zh: string; en: string } | null> {
@@ -62,7 +80,9 @@ function parseThemeLines(
     if (!match) continue;
     const zh = match[1]?.trim();
     const en = match[2]?.trim();
-    if (zh && en) parsed.push({ zh, en });
+    if (!zh || !en) continue;
+    if (isPlaceholderTheme(zh, en)) continue;
+    parsed.push({ zh, en });
   }
 
   while (parsed.length < clusterCount) parsed.push(null);

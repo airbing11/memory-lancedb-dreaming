@@ -6,6 +6,10 @@ export type RemHistoryRun = {
   day: string;
   lastingTruthIds: string[];
   clusterSpotlightIds: string[];
+  /** Added v0.2.8: truth TEXTS surfaced that day, for semantic (text-level) repeat detection. */
+  lastingTruthTexts?: string[];
+  /** Added v0.2.8: REM cluster theme names surfaced that day. */
+  clusterThemeNames?: string[];
 };
 
 export type RemHistory = {
@@ -45,6 +49,8 @@ export async function appendRemHistoryRun(params: {
   day: string;
   lastingTruthIds: string[];
   clusterSpotlightIds: string[];
+  lastingTruthTexts?: string[];
+  clusterThemeNames?: string[];
 }): Promise<void> {
   const historyPath = resolveRemHistoryPath(params.workspaceDir);
   const history = await readRemHistory(params.workspaceDir);
@@ -53,6 +59,12 @@ export async function appendRemHistoryRun(params: {
     day: params.day,
     lastingTruthIds: params.lastingTruthIds,
     clusterSpotlightIds: params.clusterSpotlightIds,
+    ...(params.lastingTruthTexts && params.lastingTruthTexts.length > 0
+      ? { lastingTruthTexts: params.lastingTruthTexts }
+      : {}),
+    ...(params.clusterThemeNames && params.clusterThemeNames.length > 0
+      ? { clusterThemeNames: params.clusterThemeNames }
+      : {}),
   });
   filtered.sort((a, b) => a.day.localeCompare(b.day));
   const trimmed = filtered.slice(-MAX_RETAINED_RUNS);
@@ -80,6 +92,27 @@ export function collectRecentRemMemoryIds(params: {
     for (const id of run[params.field]) ids.add(id);
   }
   return ids;
+}
+
+/** Collect lasting-truth TEXTS surfaced within `windowDays` (for text-level repeat detection). */
+export function collectRecentRemTruthTexts(params: {
+  history: RemHistory;
+  nowMs: number;
+  windowDays: number;
+  excludeDay?: string;
+}): string[] {
+  const cutoffMs = calculateLookbackCutoffMs(params.nowMs, params.windowDays);
+  const texts: string[] = [];
+  for (const run of params.history.runs) {
+    if (params.excludeDay && run.day === params.excludeDay) continue;
+    const dayMs = Date.parse(`${run.day}T12:00:00.000Z`);
+    if (!Number.isFinite(dayMs) || dayMs < cutoffMs) continue;
+    for (const text of run.lastingTruthTexts ?? []) {
+      const trimmed = text.trim();
+      if (trimmed.length > 0) texts.push(trimmed);
+    }
+  }
+  return texts;
 }
 
 export function resolveRemReportDay(nowMs: number, timezone: string): string {

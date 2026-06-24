@@ -13,5 +13,7 @@ export declare function runRemSleep(params: {
     subagent?: SubagentRuntime;
     llmComplete?: LlmCompleteFn;
     logger?: PluginLogger;
+    /** v0.2.8: set by the pipeline after a long promotion drought (Deep idle streak). */
+    noveltyMode?: boolean;
 }): Promise<DreamingPhaseResult>;
 //# sourceMappingURL=rem.d.ts.map

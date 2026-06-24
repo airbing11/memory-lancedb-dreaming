@@ -118,6 +118,57 @@ export function jaccardSimilarity(left: string, right: string): number {
   return union > 0 ? intersection / union : 0;
 }
 
+/** Lowercase and strip punctuation/whitespace, keeping CJK + alphanumerics. */
+export function normalizeTextForCompare(value: string): string {
+  return value
+    .toLowerCase()
+    .replace(/[\s\p{P}\p{S}]+/gu, "")
+    .trim();
+}
+
+/** Character bigram set over normalized text; works for CJK where word tokenization fails. */
+function charBigrams(normalized: string): Set<string> {
+  const grams = new Set<string>();
+  if (normalized.length === 0) return grams;
+  if (normalized.length === 1) {
+    grams.add(normalized);
+    return grams;
+  }
+  for (let i = 0; i < normalized.length - 1; i += 1) {
+    grams.add(normalized.slice(i, i + 2));
+  }
+  return grams;
+}
+
+/**
+ * Similarity (0-1) that handles both Latin and CJK text. Uses the max of
+ * token-level Jaccard (good for English) and character-bigram Jaccard (good for
+ * Chinese), so "同一主题、不同措辞" still scores high enough to dedupe.
+ */
+export function textSimilarityCjkAware(left: string, right: string): number {
+  const leftNorm = normalizeTextForCompare(left);
+  const rightNorm = normalizeTextForCompare(right);
+  if (leftNorm.length === 0 || rightNorm.length === 0) return 0;
+  if (leftNorm === rightNorm) return 1;
+
+  const tokenScore = jaccardSimilarity(left, right);
+
+  const leftGrams = charBigrams(leftNorm);
+  const rightGrams = charBigrams(rightNorm);
+  let intersection = 0;
+  for (const gram of leftGrams) {
+    if (rightGrams.has(gram)) intersection += 1;
+  }
+  // Overlap coefficient (intersection / smaller set) rather than Jaccard: a
+  // reworded truth on the same topic shares most of the shorter string's
+  // bigrams even when the longer one adds connective filler, so this catches
+  // "同一主题、不同措辞" that Jaccard would miss.
+  const minSize = Math.min(leftGrams.size, rightGrams.size);
+  const bigramScore = minSize > 0 ? intersection / minSize : 0;
+
+  return Math.max(tokenScore, bigramScore);
+}
+
 export function hashQuery(value: string): string {
   let hash = 0;
   for (let i = 0; i < value.length; i += 1) {

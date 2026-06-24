@@ -1,7 +1,7 @@
 import { readDreamingState, recordPhaseSignals } from "../state.js";
 import { filterMemoriesByLookback, formatDreamingDay } from "../utils.js";
 import { pickClusterSpotlightMemories, selectLastingTruths } from "../rem-diversity.js";
-import { appendRemHistoryRun, collectRecentRemMemoryIds, readRemHistory, } from "../rem-history.js";
+import { appendRemHistoryRun, collectRecentRemMemoryIds, collectRecentRemTruthTexts, readRemHistory, } from "../rem-history.js";
 import { appendDailyMemoryBlock, writePhaseReport } from "./reports.js";
 import { buildTagClusters, formatRemReflectionLines, nameRemClusters, } from "./rem-themes.js";
 function applyClusterSpotlights(params) {
@@ -38,11 +38,31 @@ export async function runRemSleep(params) {
         field: "clusterSpotlightIds",
         excludeDay: reportDay,
     });
+    const recentTruthTexts = collectRecentRemTruthTexts({
+        history: remHistory,
+        nowMs: params.nowMs,
+        windowDays: params.config.truthDedupeWindowDays,
+        excludeDay: reportDay,
+    });
+    const promotedMemoryIds = new Set(Object.entries(state.entries)
+        .filter(([, entry]) => Boolean(entry.promotedAt))
+        .map(([id]) => id));
+    // Novelty mode (Deep idle for too long): exclude promoted material and dedupe
+    // truths more aggressively so the report stops re-surfacing old themes.
+    const noveltyMode = params.noveltyMode === true;
+    const excludePromoted = params.config.excludePromoted || noveltyMode;
+    const truthSimilarityThreshold = noveltyMode
+        ? Math.min(params.config.truthSimilarityThreshold, 0.7)
+        : params.config.truthSimilarityThreshold;
     const truthLimit = Math.min(3, params.config.limit);
     const truthSelection = selectLastingTruths({
         entries,
         limit: truthLimit,
         recentMemoryIds: recentLastingTruthIds,
+        recentTruthTexts,
+        truthSimilarityThreshold,
+        promotedMemoryIds,
+        excludePromoted,
     });
     let clusters = buildTagClusters(entries, params.config.limit, params.config.minPatternStrength);
     clusters = applyClusterSpotlights({
@@ -53,8 +73,10 @@ export async function runRemSleep(params) {
     if (clusters.length === 0) {
         params.logger?.info(`memory-lancedb-dreaming: REM: no patterns found above threshold (minPatternStrength=${params.config.minPatternStrength})`);
     }
-    if (truthSelection.skippedRecent > 0) {
-        params.logger?.info(`memory-lancedb-dreaming: REM lasting truths rotated (${truthSelection.skippedRecent} recent id(s) skipped${truthSelection.usedFallback ? ", fallback used" : ""})`);
+    if (truthSelection.skippedRecent > 0 ||
+        truthSelection.skippedSimilar > 0 ||
+        truthSelection.skippedPromoted > 0) {
+        params.logger?.info(`memory-lancedb-dreaming: REM lasting truths rotated (recentId=${truthSelection.skippedRecent}, similarText=${truthSelection.skippedSimilar}, promoted=${truthSelection.skippedPromoted}${noveltyMode ? ", noveltyMode" : ""}${truthSelection.usedFallback ? ", fallback used" : ""})`);
     }
     let themeNames = clusters.map(() => null);
     const remModel = params.config.model?.trim();
@@ -92,6 +114,12 @@ export async function runRemSleep(params) {
             : ["- No strong candidate truths surfaced."]),
     ];
     const clusterSpotlightIds = clusters.flatMap((cluster) => cluster.spotlightMemories.slice(0, 1).map((entry) => entry.id));
+    const clusterThemeNames = clusters
+        .map((cluster, index) => {
+        const named = themeNames[index];
+        return named ? `${named.zh} / ${named.en}` : cluster.tag;
+    })
+        .filter((name) => name.trim().length > 0);
     await writePhaseReport({
         workspaceDir: params.workspaceDir,
         phase: "rem",
@@ -114,6 +142,8 @@ export async function runRemSleep(params) {
         day: reportDay,
         lastingTruthIds: truthSelection.selected.map((entry) => entry.id),
         clusterSpotlightIds,
+        lastingTruthTexts: truthSelection.selected.map((entry) => entry.text),
+        clusterThemeNames,
     });
     return { phase: "rem", bodyLines, memoryIds: entries.map((entry) => entry.id) };
 }

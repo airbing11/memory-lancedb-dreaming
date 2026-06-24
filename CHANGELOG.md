@@ -1,16 +1,45 @@
 # Changelog
 
-## 0.2.7 — 2026-06-15
+## 0.2.8 — 2026-06-22
 
-### Changed
+主题：**REM 反重复 / 叙事新鲜度 + 安装自检**。解决长期运行后日报“换措辞但素材重复”（音色史、版本升级史等陈年旧事每天回炉）的问题。
 
-- Metadata-only release: make GitHub / ClawHub listing copy English-first and bilingual.
-- Update package and plugin descriptions for clearer international discovery.
+### Fixed
+
+- **叙事新鲜度（A）：** Deep `promoted=0` 当天不再用旧的 ranked 候选生成 promotion 叙事；改为优先用当天 Light 素材写 snapshot，没有新料则跳过。此前即使无新增也会围绕老候选写日记。
+- **REM lasting truths 文本级去重（C）：** 选取前与最近 `truthDedupeWindowDays`（默认 30）天 REM 历史的 truth **文本**做相似度比对（overlap-coefficient，CJK 友好），相似度 ≥ `truthSimilarityThreshold`（默认 0.42）即跳过。此前只按 memoryId 去重，不同 ID 的同主题记忆仍会重复出现。
+- **已提炼记忆闭环（D）：** REM 选 lasting truths 时排除已写入 MEMORY.md 的记忆（`state.promotedAt`），由 `rem.excludePromoted`（默认 true）控制。
+- **REM 主题名占位符回显：** 当 LLM 把 prompt 的格式示例（`中文主题名（4-8字） / English Topic Name`）原样回显时，解析器不再当作有效主题，改为回退到 `category` 标签。
+
+### Added
+
+- **REM 空转 novelty 模式（E）：** 连续 `deep.idleNoveltyAfterDays`（默认 7）天 `promoted=0` 时，REM 自动收紧——强制排除已提炼记忆并提高去重力度，叙事停止复用旧候选。记录于 `memory/.dreams/lancedb-dreaming-deep-history.json`。
+- **`dreaming_doctor` 工具 + `scripts/doctor.sh`：** 自检 hooks/subagent 权限、安装路径、LanceDB 插槽、cron 冲突、日报投递、以及 Deep 连续空转天数。开 issue 前请附 `dreaming_doctor` 输出。
+- **REM 历史增存：** `lastingTruthTexts`、`clusterThemeNames`（供文本级去重与诊断；旧历史缺字段按空处理，向后兼容）。
+- 新增配置：`rem.truthDedupeWindowDays`、`rem.truthSimilarityThreshold`、`rem.excludePromoted`、`deep.idleNoveltyAfterDays`，并在 `dreaming_status.effectiveConfig` 暴露。
+
+### Compatibility
+
+- 已知行为（OpenClaw 第三方 memory 插槽）：6.5/6.6 之前，managed dreaming cron 可能显示 `ok` 但无产物（sidecar 激活缺口，见 openclaw/openclaw#92536）；已由 openclaw/openclaw#93678 合并修复。若你在更老版本上遇到“cron 绿但无 light/rem/deep 文件”，请升级 OpenClaw 或把 `memory-core` 加入 `plugins.allow` 并设 `enabled: false`。
+- 升级：替换 tgz → 完整重启 gateway。旧 `rem-history.json` 无需迁移；首次运行后开始写入文本/主题字段。
 
 ### Notes
 
-- No runtime behavior changes from 0.2.6.
-- 0.2.6 remains the functional release that fixed duplicate daily report pushes and REM repetition.
+- REM 仍按 `category` 聚类；本版主要在 **truth 选择与叙事素材** 层面去重，未引入向量语义聚类（计划后续版本）。
+- 若你希望完全保留旧行为：设 `rem.truthSimilarityThreshold: 1`（关文本去重）、`rem.excludePromoted: false`、`deep.idleNoveltyAfterDays: 0`（关 novelty 模式）。
+
+## 0.2.7 — 2026-06-15
+
+**English-first bilingual listing** — metadata-only; **no runtime changes** from v0.2.6.
+
+### Changed
+
+- README: English introduction first, then `## 中文说明` (ClawHub / GitHub readability).
+- `package.json` and `openclaw.plugin.json` descriptions: English-first for international discovery.
+
+### Notes
+
+- ClawHub Long description layout baseline for later releases (v0.2.8 adds content; keep EN → `---` → 中文说明).
 
 ## 0.2.6 — 2026-06-13
 

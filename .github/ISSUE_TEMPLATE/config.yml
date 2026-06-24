@@ -1,0 +1,8 @@
+blank_issues_enabled: false
+contact_links:
+  - name: Install & config FAQ (120s idle, fact/other labels, gateway won't start)
+    url: https://github.com/airbing11/memory-lancedb-dreaming/discussions/1
+    about: Most install/config problems are answered here first.
+  - name: ClawHub plugin page
+    url: https://clawhub.ai/plugins/memory-lancedb-dreaming
+    about: Install command and full configuration reference.

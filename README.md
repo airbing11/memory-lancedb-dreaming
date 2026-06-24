@@ -4,7 +4,11 @@ Light/REM/Deep memory consolidation for OpenClaw agents using LanceDB / `memory-
 
 OpenClaw currently has one active memory slot. The built-in dreaming pipeline is tied to `memory-core`, so agents that use LanceDB for vector memory can lose meaningful Light → REM → Deep consolidation. This plugin keeps LanceDB as the storage backend and runs dreaming as an external OpenClaw plugin.
 
+**v0.2.8** stops daily reports from recycling the same old material — text-level REM truth dedupe, exclude promoted memories, narrative freshness on zero-promotion days, idle novelty mode after Deep stalls, and `dreaming_doctor` install self-check.
+
 **v0.2.6** fixes duplicate daily report pushes, adds `pushOn: "changed"` delivery dedupe, auto-staggers colliding report cron schedules, and rotates REM Lasting Truths / cluster exemplars across days.
+
+**v0.2.4+** reads LanceDB `dbPath` / `embedding` from `plugins.slots.memory` (including `memory-lancedb-pro`).
 
 ## What You Get
 
@@ -24,6 +28,17 @@ Local files are still written for audit and retrieval:
 - `memory/dreaming/light|rem|deep/YYYY-MM-DD.md` — phase reports
 - `memory/.dreams/` — snapshots, delivery state, run metadata, REM diversity history
 
+**v0.2.6+:** `delivery.pushOn: "changed"` by default; colliding `dailyReport.cron` auto-staggers 30 minutes; `rem.lastingTruthCooldownDays` (7) and `rem.clusterSpotlightCooldownDays` (5).
+
+**v0.2.8 anti-repeat** (for long-running installs where the same themes reword daily):
+
+- **Text-level dedupe:** compares truth **text** over `rem.truthDedupeWindowDays` (default 30); skip if similarity ≥ `rem.truthSimilarityThreshold` (default 0.42, CJK-friendly).
+- **Exclude promoted:** memories already in `MEMORY.md` skipped by default (`rem.excludePromoted`).
+- **Narrative freshness:** on Deep `promoted=0` days, diary uses today's Light snapshot or skips — no stale ranked candidates.
+- **Idle novelty mode:** after `deep.idleNoveltyAfterDays` (default 7) zero-promotion days, REM tightens dedupe automatically.
+- **Self-check:** run `dreaming_doctor` or `bash scripts/doctor.sh` before opening an issue.
+- Restore old behavior: `rem.truthSimilarityThreshold: 1`, `rem.excludePromoted: false`, `deep.idleNoveltyAfterDays: 0`.
+
 ## Why This Plugin
 
 The plugin resolves a practical OpenClaw trade-off:
@@ -35,10 +50,22 @@ The plugin resolves a practical OpenClaw trade-off:
 | LLM-named REM themes | Limited | Yes |
 | Bilingual narrative diary | No | Yes |
 | Daily report + channel push | No | Yes |
-| Duplicate push prevention | No | Yes |
-| REM truth / exemplar rotation | No | Yes |
+| Duplicate push prevention | No | Yes (v0.2.6+) |
+| REM truth / exemplar rotation | No | Yes (v0.2.6+) |
+| REM text anti-repeat / narrative freshness | No | Yes (v0.2.8+) |
+| Install self-check (`dreaming_doctor`) | No | Yes (v0.2.8+) |
 
 You do not have to switch back to `memory-core` just to keep dreaming.
+
+## Compatibility
+
+| Item | Notes |
+|------|-------|
+| Verified OpenClaw | 2026.5.20, 2026.5.27, 2026.6.5 (VPS, LanceDB slot) |
+| Known regression | 2026.5.22 event loop (#86201/#86194) — avoid for production |
+| Third-party slot sidecar | Before 6.5/6.6, managed cron could show `ok` with no artifacts (#92536); fixed in #93678. Fallback: add `memory-core` to `plugins.allow` with `enabled: false` |
+| Install | Prefer ClawHub: `openclaw plugins install clawhub:memory-lancedb-dreaming`; offline: `scripts/install.sh` |
+| Troubleshooting | Run `dreaming_doctor` / `scripts/doctor.sh` first |
 
 ---
 
@@ -46,31 +73,83 @@ You do not have to switch back to `memory-core` just to keep dreaming.
 
 让 LanceDB 的记忆真正会做梦。这个插件为使用 LanceDB / `memory-lancedb-pro` 的 OpenClaw 智能体恢复 Light → REM → Deep 梦境巩固能力：REM 主题命名、Deep 记忆提升、中英双语 `DREAMS.md`，以及可选飞书 / 企微日报推送。
 
+**v0.2.8** 解决长期运行后日报「换措辞但素材重复」：REM 文本级去重、排除已提炼记忆、叙事新鲜度、Deep 空转 novelty 模式、`dreaming_doctor` 自检。
+
 **v0.2.6** 已修复日报双推、IM 相似内容重复推送，并增加 REM Lasting Truths 与聚类 exemplar 的跨天轮换。
 
 ### 每天你会看到什么
 
 配置 `dailyReport.delivery` 后，无需打开文件即可在 IM 里收到当日摘要（零 LLM，插件拼接）。本地仍会写入 `DREAMS.md`、`memory/YYYY-MM-DD.md`、`memory/dreaming/daily/` 与各阶段报告，便于归档与检索。
 
-如果不想推送、只要文件：保持 `dailyReport.enabled: true`，省略 `delivery` 即可。完全关闭日报：`dailyReport.enabled: false`。
+| 时机 | 你会收到 |
+|------|----------|
+| 每天 **3:00** 梦境 cron | 跑 Light/REM/Deep + 写快照/文件（**不直接推 IM**，v0.2.6+） |
+| 每天 **4:00** 日报 cron | 从快照刷新日报并 **负责 IM 推送**（与主 cron 冲突时自动错开 30 分钟） |
+| 手动 `dreaming_trigger phase=all` | 仅写文件；推送由日报 cron 负责 |
+
+不想推送、只要文件：保持 `dailyReport.enabled: true`，省略 `delivery` 即可。完全关闭日报：`dailyReport.enabled: false`。
+
+**v0.2.8 反重复（针对长期运行后日报「素材重复」）：**
+
+- **文本级去重：** 与最近 `rem.truthDedupeWindowDays`（默认 30）天 truth **文本** 比对，≥ `rem.truthSimilarityThreshold`（默认 0.42）即跳过。
+- **排除已提炼：** 已在 `MEMORY.md` 的记忆默认不再进入 lasting truths（`rem.excludePromoted`）。
+- **叙事新鲜度：** Deep `promoted=0` 当天不复用旧候选，改用当天 Light 或跳过。
+- **空转 novelty：** 连续 `deep.idleNoveltyAfterDays`（默认 7）天无晋升后 REM 自动收紧。
+- **自检：** `dreaming_doctor` 或 `bash scripts/doctor.sh`。
+- 保留旧行为：`rem.truthSimilarityThreshold: 1` + `rem.excludePromoted: false` + `deep.idleNoveltyAfterDays: 0`。
+
+### 兼容性
+
+| 项 | 说明 |
+|----|------|
+| 已验证 OpenClaw | 2026.5.20、2026.5.27、2026.6.5（腾讯云 VPS，LanceDB 插槽） |
+| 已知回归 | 2026.5.22 event loop（#86201/#86194），3–8s 延迟，避免使用 |
+| 第三方插槽 dreaming sidecar | 6.5/6.6 之前 managed cron 可能显示 `ok` 但无产物（#92536）；已由 #93678 修复 |
+| 安装方式 | 优先 ClawHub：`openclaw plugins install clawhub:memory-lancedb-dreaming`；离线 `scripts/install.sh` |
+| 排障第一步 | 先跑 `dreaming_doctor` / `scripts/doctor.sh`，再开 issue |
+
+### 为什么需要这个插件
+
+OpenClaw **同一时间只启用一个 memory 插槽**。内置 **dreaming** 挂在 **memory-core** 下，读写的是 core 记忆，**不是** LanceDB 向量表。插槽换成 LanceDB 后，原生管线**无法**对向量库跑完整 Light / REM / Deep。
+
+**memory-lancedb-dreaming** = **继续用 LanceDB** + **补回整套 dreaming** + 可选每日 IM 日报。
+
+### 能力对比
+
+| 能力 | 原生 dreaming（memory-core） | memory-lancedb-dreaming |
+|---|---|---|
+| 与 LanceDB 插槽一致 | 仅 memory-core 插槽 | ✅ |
+| LanceDB 向量完整管线 | ❌ | ✅ |
+| 语义化 REM 主题 | 有限 | ✅ |
+| 中英叙事 `DREAMS.md` | ❌ | ✅ |
+| 梦境日报 + IM 推送 | ❌ | ✅ |
+| 日报双推修复 / IM 去重 | ❌ | ✅ v0.2.6+ |
+| REM 反重复 / 叙事新鲜度 | ❌ | ✅ v0.2.8+ |
+| `dreaming_doctor` 自检 | ❌ | ✅ v0.2.8+ |
 
 ## 安装
 
-> OpenClaw 2026.5.20：`openclaw plugin install` **仍不可用**（`Unknown command: openclaw plugin`）。请用手动安装。
+> OpenClaw 2026.5.20：`openclaw plugin install` **仍不可用**（`Unknown command: openclaw plugin`）。新版优先 **ClawHub**；离线用手动安装。
 >
-> 推荐生产版本：**OpenClaw 2026.5.20**。2026.5.22 存在 event loop 回归（#86201/#86194），可能导致 3–8s 响应延迟。
+> 推荐生产版本：**OpenClaw 2026.5.20**（避开 2026.5.22 回归）。
 
-### 方式 A：安装脚本（推荐）
+### 方式 A：ClawHub（推荐）
 
 ```bash
-bash scripts/install.sh memory-lancedb-dreaming-0.2.6.tgz
+openclaw plugins install clawhub:memory-lancedb-dreaming
 ```
 
-### 方式 B：手动解压
+### 方式 B：安装脚本
+
+```bash
+bash scripts/install.sh memory-lancedb-dreaming-0.2.8.tgz
+```
+
+### 方式 C：手动解压
 
 ```bash
 mkdir -p ~/.openclaw/plugins/memory-lancedb-dreaming
-tar -xzf memory-lancedb-dreaming-0.2.6.tgz -C /tmp
+tar -xzf memory-lancedb-dreaming-0.2.8.tgz -C /tmp
 cp -r /tmp/package/* ~/.openclaw/plugins/memory-lancedb-dreaming/
 cd ~/.openclaw/plugins/memory-lancedb-dreaming && npm install --omit=dev
 ```
@@ -158,8 +237,6 @@ grep -r "workspace/memory-lancedb-dreaming" ~/.openclaw --include="*.json"
 
 > 插件启用时会自动清理遗留冲突 cron（如 `dreaming-plugin-healthcheck`），避免与自管理 dreaming cron 冲突。
 
-> OpenClaw 2026.5.20 可能自动将插件加入 `plugins.allow`；显式配置 `allow` 可确保万无一失。
-
 > `rem.model` 或 `rem.execution.model`：配置后 REM 阶段会按 **category 分组** 调用 LLM 生成中英文主题名；**必须**配合 `subagent.allowModelOverride: true`，否则回退到 category 标签。
 
 > `narrative.model` 未配置时会自动回退到 `rem.model`。叙事语言由 `narrative.languages` 控制（如 `["zh","en"]`）。
@@ -193,8 +270,8 @@ Dreaming 从 **当前 memory 插槽** 读取 LanceDB 的 `dbPath` / `embedding`�
 
 | Cron | 默认时间 | 作用 |
 |------|----------|------|
-| LanceDB Memory Dreaming | `0 3 * * *` | 跑 Light/REM/Deep + 写快照/文件；不直接推送 IM |
-| Dreaming Daily Report | `0 4 * * *` | 刷新日报文件 + 负责唯一 IM 推送；若与主 cron 冲突会自动错开 30 分钟 |
+| LanceDB Memory Dreaming | `0 3 * * *` | 跑 Light/REM/Deep + 写快照/文件；**不直接推送 IM**（v0.2.6+） |
+| Dreaming Daily Report | `0 4 * * *` | 刷新日报文件 + **负责唯一 IM 推送**；与主 cron 冲突时自动错开 30 分钟 |
 
 两条均为 `main` + `systemEvent`（零 LLM 触发）。OpenClaw **不允许** 在 main cron 上挂 `delivery`，因此推送在插件 `before_agent_reply` 内完成，不依赖 cron.delivery。
 
@@ -213,9 +290,9 @@ Dreaming 从 **当前 memory 插槽** 读取 LanceDB 的 `dbPath` / `embedding`�
 }
 ```
 
-- `channel` / `to`：与你在 OpenClaw 里用的通道一致（飞书填 `open_id`，企微/其他通道填对应目标 ID）。
+- `channel` / `to`：与你在 OpenClaw 里用的通道一致（飞书填 `open_id`）。
 - 成功时 gateway 日志：`daily report delivered via feishu to ...`
-- 失败时会有 **warn/error**，便于排查（v0.2.2 及以前可能静默失败，请升级到 **0.2.3**）。
+- v0.2.2 及以前可能静默失败，请升级到 **0.2.3+**。
 
 ### 关闭方式
 
@@ -248,10 +325,11 @@ ls ~/.openclaw/plugins/memory-lancedb-dreaming/dist/index.js
 grep -r "workspace/memory-lancedb-dreaming" ~/.openclaw --include="*.json" || echo "no stale workspace path"
 ```
 
-### 1. 安装 v0.2.6 并重启 gateway
+### 1. 安装 v0.2.8 并重启 gateway
 
 ```bash
-bash scripts/install.sh memory-lancedb-dreaming-0.2.6.tgz
+openclaw plugins install clawhub:memory-lancedb-dreaming
+# 或: bash scripts/install.sh memory-lancedb-dreaming-0.2.8.tgz
 openclaw gateway stop 2>/dev/null || true
 openclaw gateway run
 ```
@@ -261,17 +339,15 @@ openclaw gateway run
 ```bash
 grep "memory-lancedb-dreaming" ~/.openclaw/logs/* 2>/dev/null | tail -5
 # 期望: registered ... cronHook=ready ... modelOverride=ready
-# 禁止: cronHook=blocked 或 CONFIG BLOCKED
 ```
 
-### 2. dreaming_status 自检
+### 2. dreaming_status / dreaming_doctor 自检
 
-| 字段 | 期望 |
+| 字段 / 工具 | 期望 |
 |---|---|
 | `hooks.cronTriggerReady` | `true` |
 | `hooks.llmModelOverrideReady` | `true`（若配置了 rem.model） |
-| `lastRun.lastRunAt` | 触发后有 ISO 时间戳 |
-| `effectiveConfig.remModel` | 你的 model id |
+| `dreaming_doctor` | hooks、LanceDB 插槽、cron、无路径错误 |
 | `memoryCount` | > 0 |
 
 ### 3. 手动 trigger
@@ -298,9 +374,10 @@ openclaw cron run <dreaming-job-id>
 | 5 | 中文叙事 | DREAMS.md 含 zh + en |
 | 6 | cron 触发 | trigger received + phases completed |
 | 7 | 冲突 cron 清理 | 无 `dreaming-plugin-healthcheck` |
+| 8 | dreaming_doctor | 无 blocking 项 |
 | 9 | 梦境日报文件 | `memory/YYYY-MM-DD.md` 含 `## 梦境日报` |
 | 10 | 日报 cron | `openclaw cron list` 含 `Dreaming Daily Report` |
-| 11 | 通道推送（v0.2.3） | 日志 `daily report delivered via ...` + IM 收到正文 |
+| 11 | 通道推送 | 日志 `daily report delivered via ...` + IM 收到正文 |
 
 ## 自定义
 
@@ -329,13 +406,13 @@ MIT © 2026 airbing11
 
 ## 版本与变更
 
-- 当前推荐版本：**0.2.6**（日报推送去重 + REM 内容轮换；0.2.4 插槽兼容已保留）
+- 当前推荐版本：**0.2.8**（REM 反重复 + `dreaming_doctor`；保留 0.2.6 日报去重与 0.2.4 插槽兼容）
+- 页面版式基线：**0.2.7**（README 英文在前 + `## 中文说明`）
 - 变更记录：[CHANGELOG.md](./CHANGELOG.md)
-- 验收报告：[docs/v0.2.6-ACCEPTANCE-REPORT.md](./docs/v0.2.6-ACCEPTANCE-REPORT.md)
-- 发布步骤：[docs/RELEASE-0.2.4.md](./docs/RELEASE-0.2.4.md)（旧版流程参考）
+- 验收报告：[docs/v0.2.8-OPENCLAW-TEST-STEPS.md](./docs/v0.2.8-OPENCLAW-TEST-STEPS.md)
 
 ## 发布渠道
 
-- [ClawHub](https://clawhub.ai/packages/memory-lancedb-dreaming)
+- [ClawHub](https://clawhub.ai/plugins/memory-lancedb-dreaming)
 - [GitHub Releases](https://github.com/airbing11/memory-lancedb-dreaming/releases)
 - LanceDB Discussions

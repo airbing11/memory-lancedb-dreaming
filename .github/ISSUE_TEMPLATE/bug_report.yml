@@ -1,0 +1,80 @@
+name: Bug report
+description: Report a problem with memory-lancedb-dreaming (install, cron, REM repetition, daily report, etc.)
+labels: ["bug"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for the report. Most issues are configuration or version related, so the fields below
+        are required — they let us reproduce quickly instead of asking back and forth.
+
+        Before filing, please run the self-check:
+        - `bash scripts/doctor.sh` (environment)
+        - call the `dreaming_doctor` tool from your agent (runtime)
+  - type: input
+    id: plugin_version
+    attributes:
+      label: Plugin version
+      description: From package.json / ClawHub (e.g. 0.2.8)
+      placeholder: "0.2.8"
+    validations:
+      required: true
+  - type: input
+    id: openclaw_version
+    attributes:
+      label: OpenClaw version
+      description: Output of `openclaw --version`
+      placeholder: "2026.6.5"
+    validations:
+      required: true
+  - type: dropdown
+    id: memory_slot
+    attributes:
+      label: Active memory slot (plugins.slots.memory)
+      options:
+        - memory-lancedb
+        - memory-lancedb-pro
+        - lancedb-pro
+        - other / not sure
+    validations:
+      required: true
+  - type: textarea
+    id: what_happened
+    attributes:
+      label: What happened?
+      description: Expected vs actual behavior. If it's about repetitive reports, attach a couple of recent daily-report excerpts.
+    validations:
+      required: true
+  - type: textarea
+    id: dreaming_doctor
+    attributes:
+      label: dreaming_doctor output
+      description: Paste the full output of the `dreaming_doctor` tool (paths may be redacted).
+      render: text
+    validations:
+      required: true
+  - type: textarea
+    id: dreaming_status
+    attributes:
+      label: dreaming_status output
+      description: Paste the full JSON from the `dreaming_status` tool (paths may be redacted).
+      render: json
+    validations:
+      required: true
+  - type: textarea
+    id: logs
+    attributes:
+      label: Gateway logs
+      description: Last ~10 lines mentioning `memory-lancedb-dreaming` from the gateway log.
+      render: shell
+    validations:
+      required: false
+  - type: checkboxes
+    id: checks
+    attributes:
+      label: Pre-flight
+      options:
+        - label: Plugin is installed under `~/.openclaw/plugins/` (NOT `~/.openclaw/workspace/`)
+          required: true
+        - label: I fully restarted the gateway after config changes (not just hot reload)
+          required: true

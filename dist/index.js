@@ -1,7 +1,8 @@
 import { definePluginEntry } from "openclaw/plugin-sdk/plugin-entry";
 import { Type } from "typebox";
 import { DreamingConfigSchema, } from "./config.js";
-import { resolveDreamingConfig, summarizeDreamingConfig } from "./config-resolve.js";
+import { dreamingConfigNeedsModelOverride, readPluginHooksPolicy, readPluginSubagentPolicy, resolveDreamingConfig, summarizeDreamingConfig, } from "./config-resolve.js";
+import { runDreamingDoctor } from "./doctor.js";
 import { summarizePluginEntryPolicy, warnIfCronHookBlocked, warnIfModelOverrideBlocked } from "./hook-policy.js";
 import { RUNTIME_CRON_RECONCILE_INTERVAL_MS, STARTUP_CRON_RETRY_DELAY_MS, STARTUP_CRON_MAX_RETRIES, DAILY_REPORT_TRIGGER_TOKEN, DREAMING_TRIGGER_TOKEN, PLUGIN_VERSION, } from "./constants.js";
 import { reconcileManagedDreamingCron, resolveCronServiceFromCandidate, resolveEffectiveDailyReportCronExpr, } from "./cron.js";
@@ -547,6 +548,53 @@ export default definePluginEntry({
             }
             catch (err) {
                 api.logger.warn(`memory-lancedb-dreaming: dreaming_trigger tool registration failed: ${String(err)}`);
+            }
+            try {
+                api.registerTool({
+                    name: "dreaming_doctor",
+                    label: "Dreaming Doctor",
+                    description: "Self-check the dreaming plugin: hooks, model override, install path, LanceDB slot, cron collision, daily report delivery, and Deep idle streak.",
+                    parameters: Type.Object({}),
+                    async execute(_toolCallId, _params) {
+                        const activeConfig = refreshConfig();
+                        const workspaceDir = resolveWorkspace();
+                        let memoryCount = null;
+                        let lancedbError;
+                        try {
+                            const db = createDreamingDb();
+                            memoryCount = await db.count();
+                        }
+                        catch (err) {
+                            lancedbError = String(err);
+                        }
+                        const report = await runDreamingDoctor({
+                            config: activeConfig,
+                            workspaceDir,
+                            hooksAllowConversationAccess: readPluginHooksPolicy(api).allowConversationAccess,
+                            subagentAllowModelOverride: readPluginSubagentPolicy(api).allowModelOverride,
+                            needsModelOverride: dreamingConfigNeedsModelOverride(activeConfig),
+                            lancedbPluginId: getResolvedLanceDbPluginId(),
+                            lancedbDbPath: getCachedLancedbConfig()?.dbPath ?? null,
+                            lancedbError,
+                            memoryCount,
+                            mainCronExpr: activeConfig.cron,
+                            dailyReportEffectiveCronExpr: resolveEffectiveDailyReportCronExpr(activeConfig).expr,
+                        });
+                        const lines = report.checks.map((check) => {
+                            const icon = check.level === "pass" ? "✅" : check.level === "warn" ? "⚠️" : "❌";
+                            const fix = check.fix ? `\n    fix: ${check.fix}` : "";
+                            return `${icon} [${check.id}] ${check.message}${fix}`;
+                        });
+                        const header = `Dreaming Doctor: ${report.ok ? "OK" : "ISSUES FOUND"} (pass=${report.summary.pass}, warn=${report.summary.warn}, fail=${report.summary.fail})`;
+                        return {
+                            content: [{ type: "text", text: `${header}\n\n${lines.join("\n")}` }],
+                            details: report,
+                        };
+                    },
+                }, { optional: true });
+            }
+            catch (err) {
+                api.logger.warn(`memory-lancedb-dreaming: dreaming_doctor tool registration failed: ${String(err)}`);
             }
             try {
                 api.registerService({

@@ -1,15 +1,16 @@
 {
   "id": "memory-lancedb-dreaming",
   "name": "Dreaming (LanceDB)",
-  "description": "Light/REM/Deep memory consolidation for LanceDB / memory-lancedb-pro: bilingual DREAMS.md, REM diversity, Deep promotion, and optional daily report push. 中文：为 LanceDB 记忆后端恢复梦境巩固与日报推送。",
-  "version": "0.2.7",
+  "description": "Light/REM/Deep dreaming for memory-lancedb: narrative DREAMS.md, promotion, and daily report (zero-LLM file summary + optional push to Feishu/WeCom/etc. via dailyReport.delivery).",
+  "version": "0.2.8",
   "activation": {
     "onStartup": true
   },
   "contracts": {
     "tools": [
       "dreaming_status",
-      "dreaming_trigger"
+      "dreaming_trigger",
+      "dreaming_doctor"
     ]
   },
   "toolMetadata": {
@@ -19,6 +20,10 @@
     },
     "dreaming_trigger": {
       "description": "Manually trigger a dreaming cycle (Light/REM/Deep)",
+      "optional": true
+    },
+    "dreaming_doctor": {
+      "description": "Self-check the dreaming plugin: hooks, model override, install path, LanceDB slot, cron collision, daily report delivery, and Deep idle streak.",
       "optional": true
     }
   },
@@ -58,6 +63,21 @@
           "minPatternStrength": { "type": "number", "default": 0.45 },
           "lastingTruthCooldownDays": { "type": "number", "default": 7 },
           "clusterSpotlightCooldownDays": { "type": "number", "default": 5 },
+          "truthDedupeWindowDays": {
+            "type": "number",
+            "default": 30,
+            "description": "Look back this many days of REM history and skip lasting truths whose TEXT is semantically near an already-surfaced truth"
+          },
+          "truthSimilarityThreshold": {
+            "type": "number",
+            "default": 0.42,
+            "description": "Similarity (0-1) at or above which a candidate truth is treated as a repeat of a recent truth and skipped"
+          },
+          "excludePromoted": {
+            "type": "boolean",
+            "default": true,
+            "description": "Skip memories already promoted into MEMORY.md when selecting lasting truths"
+          },
           "model": {
             "type": "string",
             "description": "Model override for REM semantic theme naming (alias: rem.execution.model)"
@@ -83,7 +103,12 @@
           "minRecallCount": { "type": "number", "default": 3 },
           "minUniqueQueries": { "type": "number", "default": 1 },
           "recencyHalfLifeDays": { "type": "number", "default": 14 },
-          "maxAgeDays": { "type": "number", "default": 30 }
+          "maxAgeDays": { "type": "number", "default": 30 },
+          "idleNoveltyAfterDays": {
+            "type": "number",
+            "default": 7,
+            "description": "After this many consecutive zero-promotion days, REM enters novelty mode (tighter dedupe, no stale narrative reuse). Set 0 to disable."
+          }
         }
       },
       "narrative": {

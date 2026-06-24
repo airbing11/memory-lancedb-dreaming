@@ -22,6 +22,22 @@ export const RemDreamingConfigSchema = Type.Object({
         maximum: 30,
         description: "Rotate cluster exemplar memories recently used in REM reflections",
     }),
+    truthDedupeWindowDays: Type.Number({
+        default: 30,
+        minimum: 1,
+        maximum: 90,
+        description: "Look back this many days of REM history and skip lasting truths whose TEXT is semantically near an already-surfaced truth (not just same memoryId)",
+    }),
+    truthSimilarityThreshold: Type.Number({
+        default: 0.42,
+        minimum: 0.2,
+        maximum: 1.0,
+        description: "Similarity (0-1, overlap-coefficient based) at or above which a candidate truth is treated as a repeat of a recent truth and skipped. ~0.42 catches reworded same-topic truths (同一主题不同措辞) without dropping unrelated items.",
+    }),
+    excludePromoted: Type.Boolean({
+        default: true,
+        description: "Skip memories already promoted into MEMORY.md (state.promotedAt) when selecting lasting truths",
+    }),
     model: Type.Optional(Type.String({ description: "Model override for REM semantic theme naming" })),
 });
 export const DeepDreamingConfigSchema = Type.Object({
@@ -34,6 +50,12 @@ export const DeepDreamingConfigSchema = Type.Object({
     minUniqueQueries: Type.Number({ default: 1, minimum: 1, maximum: 20 }),
     recencyHalfLifeDays: Type.Number({ default: 14, minimum: 1, maximum: 90 }),
     maxAgeDays: Type.Number({ default: 30, minimum: 1, maximum: 365 }),
+    idleNoveltyAfterDays: Type.Number({
+        default: 7,
+        minimum: 0,
+        maximum: 60,
+        description: "When this many consecutive days promote 0 memories, REM enters novelty mode: lasting truths exclude promoted/stale material and narrative stops reusing old promotion candidates. Set 0 to disable.",
+    }),
 });
 export const NarrativeLanguageSchema = Type.Union([
     Type.Literal("zh"),
@@ -83,6 +105,7 @@ export function resolveDeepConfig(deep) {
         minUniqueQueries: deep.minUniqueQueries,
         recencyHalfLifeDays: deep.recencyHalfLifeDays,
         maxAgeDays: deep.maxAgeDays,
+        idleNoveltyAfterDays: deep.idleNoveltyAfterDays,
         maxPromotions,
     };
 }
@@ -91,7 +114,17 @@ export const DEFAULT_DREAMING_CONFIG = {
     cron: "0 3 * * *",
     timezone: "Asia/Shanghai",
     light: { enabled: true, lookbackDays: 2, limit: 100 },
-    rem: { enabled: true, lookbackDays: 7, limit: 10, minPatternStrength: 0.45, lastingTruthCooldownDays: 7, clusterSpotlightCooldownDays: 5 },
+    rem: {
+        enabled: true,
+        lookbackDays: 7,
+        limit: 10,
+        minPatternStrength: 0.45,
+        lastingTruthCooldownDays: 7,
+        clusterSpotlightCooldownDays: 5,
+        truthDedupeWindowDays: 30,
+        truthSimilarityThreshold: 0.42,
+        excludePromoted: true,
+    },
     deep: {
         enabled: true,
         maxPromotions: 5,
@@ -100,6 +133,7 @@ export const DEFAULT_DREAMING_CONFIG = {
         minUniqueQueries: 1,
         recencyHalfLifeDays: 14,
         maxAgeDays: 30,
+        idleNoveltyAfterDays: 7,
     },
     narrative: { enabled: true, languages: ["zh", "en"] },
     dailyReport: {

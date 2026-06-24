@@ -43,6 +43,48 @@ describe("REM diversity", () => {
     assert.equal(result.skippedRecent, 3);
   });
 
+  it("skips truths whose TEXT repeats a recent truth (CJK-aware)", () => {
+    const entries = [
+      memory("old-voice", 0.97, "音色选择：甜心小玲 vs 晓晓 vs 小艺的讨论"),
+      memory("fresh-a", 0.96, "今天接入了新的支付回调流程"),
+      memory("fresh-b", 0.95, "修复了定时任务的时区偏移"),
+      memory("fresh-c", 0.94, "梳理了爱兔合资的股权结构"),
+    ];
+    const result = selectLastingTruths({
+      entries,
+      limit: 3,
+      recentMemoryIds: new Set(),
+      recentTruthTexts: ["音色选择史：甜心小玲、晓晓、小艺之间反复比较"],
+      truthSimilarityThreshold: 0.42,
+    });
+    assert.equal(result.skippedSimilar >= 1, true);
+    // Enough fresh candidates exist, so the similar one is not re-added by fallback.
+    assert.equal(
+      result.selected.some((entry) => entry.id === "old-voice"),
+      false
+    );
+  });
+
+  it("excludes promoted memories when excludePromoted is set", () => {
+    const entries = [
+      memory("promoted-1", 0.99, "已写入 MEMORY.md 的铁律"),
+      memory("fresh-1", 0.9, "新的观察 A"),
+      memory("fresh-2", 0.89, "新的观察 B"),
+    ];
+    const result = selectLastingTruths({
+      entries,
+      limit: 3,
+      recentMemoryIds: new Set(),
+      promotedMemoryIds: new Set(["promoted-1"]),
+      excludePromoted: true,
+    });
+    assert.equal(result.skippedPromoted, 1);
+    assert.equal(
+      result.selected.some((entry) => entry.id === "promoted-1"),
+      false
+    );
+  });
+
   it("rotates cluster spotlight memories by day", () => {
     const memories = Array.from({ length: 12 }, (_, index) =>
       memory(`m-${index}`, 0.9 - index * 0.01, `memory ${index}`)

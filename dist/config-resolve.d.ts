@@ -8,6 +8,10 @@ export declare function summarizeDreamingConfig(config: DreamingConfig): {
     remModel: string | null;
     narrativeModel: string | null;
     narrativeLanguages: ("zh" | "en")[];
+    remTruthDedupeWindowDays: number;
+    remTruthSimilarityThreshold: number;
+    remExcludePromoted: boolean;
+    deepIdleNoveltyAfterDays: number;
     dailyReportEnabled: boolean;
     dailyReportCron: string;
     dailyReportDelivery: {
