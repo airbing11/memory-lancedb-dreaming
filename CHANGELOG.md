@@ -1,5 +1,14 @@
 # Changelog
 
+## 0.2.9 — 2026-06-24
+
+### Fixed
+
+- Emergency ClawHub packaging fix: include the generated `dist/doctor.*` and
+  `dist/deep-history.*` modules that `dist/index.js` imports in v0.2.8.
+- No runtime behavior changes from v0.2.8; this release exists because ClawHub
+  does not allow overwriting the broken 0.2.8 artifact.
+
 ## 0.2.8 — 2026-06-22
 
 主题：**REM 反重复 / 叙事新鲜度 + 安装自检**。解决长期运行后日报“换措辞但素材重复”（音色史、版本升级史等陈年旧事每天回炉）的问题。
