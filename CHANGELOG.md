@@ -1,6 +1,6 @@
 # Changelog
 
-## 0.3.0 — 2026-07-22
+## 0.3.1 — 2026-07-22
 
 主题：**Cron session 隔离 — 消除 Dreaming 对 main session 缓存前缀的污染**。
 
