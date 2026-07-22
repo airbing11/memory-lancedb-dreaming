@@ -1,6 +1,6 @@
 {
   "name": "memory-lancedb-dreaming",
-  "version": "0.2.8",
+  "version": "0.3.0",
   "description": "Dreaming plugin for memory-lancedb — Light/REM/Deep phases, DREAMS.md, daily report with optional channel push (Feishu/WeCom/etc.).",
   "type": "module",
   "main": "./dist/index.js",

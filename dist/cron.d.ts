@@ -23,6 +23,11 @@ export type CronJob = {
         text?: string;
         message?: string;
         timeoutSeconds?: number;
+        model?: string;
+        thinking?: string;
+        fallbacks?: string[];
+        toolsAllow?: string[];
+        lightContext?: boolean;
     };
     delivery?: CronDelivery;
     createdAtMs?: number;
@@ -56,11 +61,11 @@ export declare function buildManagedDreamingCronJob(config: DreamingConfig): {
         kind: "cron";
         expr: string;
     };
-    sessionTarget: "main";
+    sessionTarget: "isolated";
     wakeMode: "now";
     payload: {
-        kind: "systemEvent";
-        text: string;
+        kind: "agentTurn";
+        message: string;
     };
 };
 /** Legacy crons that conflict with plugin-managed dreaming schedules. */

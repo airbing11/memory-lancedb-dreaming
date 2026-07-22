@@ -2,7 +2,7 @@
   "id": "memory-lancedb-dreaming",
   "name": "Dreaming (LanceDB)",
   "description": "Light/REM/Deep dreaming for memory-lancedb: narrative DREAMS.md, promotion, and daily report (zero-LLM file summary + optional push to Feishu/WeCom/etc. via dailyReport.delivery).",
-  "version": "0.2.8",
+  "version": "0.2.9",
   "activation": {
     "onStartup": true
   },

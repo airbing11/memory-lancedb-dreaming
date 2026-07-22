@@ -1,5 +1,39 @@
 # Changelog
 
+## 0.3.0 — 2026-07-22
+
+主题：**Cron session 隔离 — 消除 Dreaming 对 main session 缓存前缀的污染**。
+
+### Changed
+
+- **Breaking: cron session 隔离。** 两个托管 cron（Dreaming Pipeline + Daily Report）从 `sessionTarget: "main"` + `payload.kind: "systemEvent"` 改为 `sessionTarget: "isolated"` + `payload.kind: "agentTurn"`。Dreaming 管道现在在隔离的 ephemeral session 里运行，不再污染 main session 的上下文，避免 DeepSeek 等 prefix-cache 模型因上下文前缀变化而丢失缓存命中率。
+- `buildManagedDreamingCronJob` / `buildManagedDailyReportCronJob`：`sessionTarget` → `"isolated"`，`payload.kind` → `"agentTurn"`，`payload.text` → `payload.message`。
+- `buildManagedDreamingPatch` / `buildManagedDailyReportPatch`：reconcile 时检测旧 `systemEvent`/`main` 配置并 patch 为新 `agentTurn`/`isolated` 配置。升级后自动迁移。
+- `isManagedDreamingJob` / `isManagedDailyReportJob`：同时匹配 `payload.text` 和 `payload.message`，确保旧 `systemEvent` cron 和新 `agentTurn` cron 都能被正确识别。
+- `CronJob.payload` 类型扩展：新增 `model`、`thinking`、`fallbacks`、`toolsAllow`、`lightContext` 字段（对齐 OpenClaw cron schema）。
+
+### Effect
+
+- main session 的上下文前缀不再被 Dreaming cron 改写
+- DeepSeek V4 等前缀缓存模型的缓存命中率恢复至正常水平（88%+）
+- 每日节省约 10–15 元 cache miss 多花的 token 费用
+- `before_agent_reply` hook 无需改动：`ctx.trigger === "cron"` + `event.cleanedBody` 包含触发 token 的逻辑在 isolated session 中同样适用
+
+### Compatibility
+
+- 升级后首次 reconcile 自动将现有 `main`+`systemEvent` cron 更新为 `isolated`+`agentTurn`，无需手动干预
+- `dreaming_trigger` 工具（手动触发）不受影响，仍然直接调用 pipeline
+- 如果回退到 0.2.x，需手动将 cron 改回 `main`+`systemEvent`，否则 0.2.x reconcile 会自动修复
+
+## 0.2.9 — 2026-06-24
+
+### Fixed
+
+- Emergency ClawHub packaging fix: include the generated `dist/doctor.*` and
+  `dist/deep-history.*` modules that `dist/index.js` imports in v0.2.8.
+- No runtime behavior changes from v0.2.8; this release exists because ClawHub
+  does not allow overwriting the broken 0.2.8 artifact.
+
 ## 0.2.8 — 2026-06-22
 
 主题：**REM 反重复 / 叙事新鲜度 + 安装自检**。解决长期运行后日报“换措辞但素材重复”（音色史、版本升级史等陈年旧事每天回炉）的问题。

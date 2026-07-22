@@ -142,14 +142,14 @@ openclaw plugins install clawhub:memory-lancedb-dreaming
 ### 方式 B：安装脚本
 
 ```bash
-bash scripts/install.sh memory-lancedb-dreaming-0.2.8.tgz
+bash scripts/install.sh memory-lancedb-dreaming-0.2.9.tgz
 ```
 
 ### 方式 C：手动解压
 
 ```bash
 mkdir -p ~/.openclaw/plugins/memory-lancedb-dreaming
-tar -xzf memory-lancedb-dreaming-0.2.8.tgz -C /tmp
+tar -xzf memory-lancedb-dreaming-0.2.9.tgz -C /tmp
 cp -r /tmp/package/* ~/.openclaw/plugins/memory-lancedb-dreaming/
 cd ~/.openclaw/plugins/memory-lancedb-dreaming && npm install --omit=dev
 ```
@@ -325,11 +325,11 @@ ls ~/.openclaw/plugins/memory-lancedb-dreaming/dist/index.js
 grep -r "workspace/memory-lancedb-dreaming" ~/.openclaw --include="*.json" || echo "no stale workspace path"
 ```
 
-### 1. 安装 v0.2.8 并重启 gateway
+### 1. 安装 v0.2.9 并重启 gateway
 
 ```bash
 openclaw plugins install clawhub:memory-lancedb-dreaming
-# 或: bash scripts/install.sh memory-lancedb-dreaming-0.2.8.tgz
+# 或: bash scripts/install.sh memory-lancedb-dreaming-0.2.9.tgz
 openclaw gateway stop 2>/dev/null || true
 openclaw gateway run
 ```
@@ -406,7 +406,7 @@ MIT © 2026 airbing11
 
 ## 版本与变更
 
-- 当前推荐版本：**0.2.8**（REM 反重复 + `dreaming_doctor`；保留 0.2.6 日报去重与 0.2.4 插槽兼容）
+- 当前推荐版本：**0.2.9**（0.2.8 反重复 + `dreaming_doctor` 的 ClawHub 打包热修；保留 0.2.6 日报去重与 0.2.4 插槽兼容）
 - 页面版式基线：**0.2.7**（README 英文在前 + `## 中文说明`）
 - 变更记录：[CHANGELOG.md](./CHANGELOG.md)
 - 验收报告：[docs/v0.2.8-OPENCLAW-TEST-STEPS.md](./docs/v0.2.8-OPENCLAW-TEST-STEPS.md)
