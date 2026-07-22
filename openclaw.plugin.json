@@ -2,7 +2,7 @@
   "id": "memory-lancedb-dreaming",
   "name": "Dreaming (LanceDB)",
   "description": "Light/REM/Deep dreaming for memory-lancedb: narrative DREAMS.md, promotion, and daily report (zero-LLM file summary + optional push to Feishu/WeCom/etc. via dailyReport.delivery).",
-  "version": "0.2.9",
+  "version": "0.3.3",
   "activation": {
     "onStartup": true
   },
@@ -49,20 +49,47 @@
       "light": {
         "type": "object",
         "properties": {
-          "enabled": { "type": "boolean", "default": true },
-          "lookbackDays": { "type": "number", "default": 2 },
-          "limit": { "type": "number", "default": 100 }
+          "enabled": {
+            "type": "boolean",
+            "default": true
+          },
+          "lookbackDays": {
+            "type": "number",
+            "default": 2
+          },
+          "limit": {
+            "type": "number",
+            "default": 100
+          }
         }
       },
       "rem": {
         "type": "object",
         "properties": {
-          "enabled": { "type": "boolean", "default": true },
-          "lookbackDays": { "type": "number", "default": 7 },
-          "limit": { "type": "number", "default": 10 },
-          "minPatternStrength": { "type": "number", "default": 0.45 },
-          "lastingTruthCooldownDays": { "type": "number", "default": 7 },
-          "clusterSpotlightCooldownDays": { "type": "number", "default": 5 },
+          "enabled": {
+            "type": "boolean",
+            "default": true
+          },
+          "lookbackDays": {
+            "type": "number",
+            "default": 7
+          },
+          "limit": {
+            "type": "number",
+            "default": 10
+          },
+          "minPatternStrength": {
+            "type": "number",
+            "default": 0.45
+          },
+          "lastingTruthCooldownDays": {
+            "type": "number",
+            "default": 7
+          },
+          "clusterSpotlightCooldownDays": {
+            "type": "number",
+            "default": 5
+          },
           "truthDedupeWindowDays": {
             "type": "number",
             "default": 30,
@@ -85,7 +112,9 @@
           "execution": {
             "type": "object",
             "properties": {
-              "model": { "type": "string" }
+              "model": {
+                "type": "string"
+              }
             }
           }
         }
@@ -93,17 +122,38 @@
       "deep": {
         "type": "object",
         "properties": {
-          "enabled": { "type": "boolean", "default": true },
-          "maxPromotions": { "type": "number", "default": 5 },
+          "enabled": {
+            "type": "boolean",
+            "default": true
+          },
+          "maxPromotions": {
+            "type": "number",
+            "default": 5
+          },
           "limit": {
             "type": "number",
             "description": "Deprecated: use maxPromotions"
           },
-          "minScore": { "type": "number", "default": 0.7 },
-          "minRecallCount": { "type": "number", "default": 3 },
-          "minUniqueQueries": { "type": "number", "default": 1 },
-          "recencyHalfLifeDays": { "type": "number", "default": 14 },
-          "maxAgeDays": { "type": "number", "default": 30 },
+          "minScore": {
+            "type": "number",
+            "default": 0.7
+          },
+          "minRecallCount": {
+            "type": "number",
+            "default": 3
+          },
+          "minUniqueQueries": {
+            "type": "number",
+            "default": 1
+          },
+          "recencyHalfLifeDays": {
+            "type": "number",
+            "default": 14
+          },
+          "maxAgeDays": {
+            "type": "number",
+            "default": 30
+          },
           "idleNoveltyAfterDays": {
             "type": "number",
             "default": 7,
@@ -114,11 +164,23 @@
       "narrative": {
         "type": "object",
         "properties": {
-          "enabled": { "type": "boolean", "default": true },
+          "enabled": {
+            "type": "boolean",
+            "default": true
+          },
           "languages": {
             "type": "array",
-            "items": { "type": "string", "enum": ["zh", "en"] },
-            "default": ["zh", "en"]
+            "items": {
+              "type": "string",
+              "enum": [
+                "zh",
+                "en"
+              ]
+            },
+            "default": [
+              "zh",
+              "en"
+            ]
           },
           "model": {
             "type": "string",
@@ -127,7 +189,9 @@
           "execution": {
             "type": "object",
             "properties": {
-              "model": { "type": "string" }
+              "model": {
+                "type": "string"
+              }
             }
           }
         }
@@ -145,30 +209,65 @@
       "dailyReport": {
         "type": "object",
         "properties": {
-          "enabled": { "type": "boolean", "default": true },
-          "cron": { "type": "string", "default": "0 4 * * *" },
-          "timezone": { "type": "string" },
+          "enabled": {
+            "type": "boolean",
+            "default": true
+          },
+          "cron": {
+            "type": "string",
+            "default": "0 4 * * *"
+          },
+          "timezone": {
+            "type": "string"
+          },
           "languages": {
             "type": "array",
-            "items": { "type": "string", "enum": ["zh", "en"] },
-            "default": ["zh"]
+            "items": {
+              "type": "string",
+              "enum": [
+                "zh",
+                "en"
+              ]
+            },
+            "default": [
+              "zh"
+            ]
           },
           "delivery": {
             "type": "object",
             "properties": {
-              "channel": { "type": "string" },
-              "to": { "type": "string" },
-              "mode": { "type": "string", "enum": ["announce", "direct", "webhook"] },
+              "channel": {
+                "type": "string"
+              },
+              "to": {
+                "type": "string"
+              },
+              "mode": {
+                "type": "string",
+                "enum": [
+                  "announce",
+                  "direct",
+                  "webhook"
+                ]
+              },
               "pushOn": {
                 "type": "string",
-                "enum": ["always", "changed"],
+                "enum": [
+                  "always",
+                  "changed"
+                ],
                 "default": "changed",
                 "description": "Push when report content changes (changed) or every scheduled run (always)"
               },
               "threadId": {},
-              "accountId": { "type": "string" }
+              "accountId": {
+                "type": "string"
+              }
             },
-            "required": ["channel", "to"]
+            "required": [
+              "channel",
+              "to"
+            ]
           }
         }
       }
