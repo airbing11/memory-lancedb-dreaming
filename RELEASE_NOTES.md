@@ -1,4 +1,4 @@
-# memory-lancedb-dreaming v0.3.11 — 待测说明
+# memory-lancedb-dreaming v0.3.11 — 发布说明
 
 > **日期：** 2026-07-22
 > **安装包：** `memory-lancedb-dreaming-0.3.11.tgz`
@@ -76,21 +76,21 @@ Dreaming 插件：Light → REM → Deep 三阶段梦境循环 + 叙事日记 + 
 此前“legacy-zip 与 code-plugin 无法合并”的判断不是 0.3.10 的真实阻塞点；
 无需改包名或清理旧 package。
 
-### 0.3.11 发布策略
+### 0.3.11 发布保证
 
-1. 小泡先使用本地 `.tgz` 完成 OpenClaw 2026.7.1 实机验收
-2. 验收通过后再提交 GitHub，创建不可移动的 `v0.3.11` tag
-3. 从真实 Git checkout 生成 npm ClawPack，不从无 `.git` 的源码归档发布
-4. 发布时绑定准确的 source repo / commit / ref
-5. 发布后确认 `llmAnalysis.status=clean`、`latestVersion=0.3.11`
+1. 已使用本地 `.tgz` 完成 OpenClaw 2026.7.1 实机验收
+2. 从真实 Git checkout 生成 npm ClawPack
+3. GitHub Release 与 ClawHub 绑定同一 `v0.3.11` commit
+4. ClawPack 仅含 46 个生产文件
+5. 发布前 63/63 单测、生产依赖审计和 Plugin Inspector 全部通过
 
 ---
 
-## 小泡验收重点
+## OpenClaw 实机验收结果
 
-- `dreaming_status.version` 必须显示 `0.3.11`
-- 两条 cron 必须为 `isolated` + `agentTurn`
-- 旧 `main` + `systemEvent` cron 应自动迁移，重命名旧 trigger cron 应被清理
-- `dreaming_trigger phase=all` 与日报 cron 不得重叠运行
-- Light / REM / Deep / Narrative / Daily Report 产物正常
-- `dreaming_doctor` 无 fail；Gateway 日志无重复 cron 或并发写入错误
+- `dreaming_status.version=0.3.11`
+- `dreaming_doctor` 7/7 通过，LanceDB provider 为 `memory-lancedb-pro`
+- Dreaming 与 Daily Report 两条 cron 均为 `isolated` + `agentTurn`
+- 手动 `phase=all`：Light=100、REM=200、Narrative=true，三阶段完成
+- Daily Report `pushOn=changed` 去重正常，飞书私聊实测送达
+- Gateway 无插件错误，`consecutiveErrors=0`

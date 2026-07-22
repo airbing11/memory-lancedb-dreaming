@@ -66,7 +66,7 @@ You do not have to switch back to `memory-core` just to keep dreaming.
 
 | Item | Notes |
 |------|-------|
-| Supported OpenClaw | 2026.6.9+ (security baseline); v0.3.11 test target: 2026.7.1 |
+| Supported OpenClaw | 2026.6.9+ (security baseline); v0.3.11 verified on 2026.7.1 |
 | Third-party slot sidecar | Before 6.5/6.6, managed cron could show `ok` with no artifacts (#92536); fixed in #93678. Fallback: add `memory-core` to `plugins.allow` with `enabled: false` |
 | Install | Prefer ClawHub: `openclaw plugins install clawhub:memory-lancedb-dreaming`; offline: `scripts/install.sh` |
 | Troubleshooting | Run `dreaming_doctor` / `scripts/doctor.sh` first |
@@ -108,7 +108,7 @@ You do not have to switch back to `memory-core` just to keep dreaming.
 
 | 项 | 说明 |
 |----|------|
-| 支持的 OpenClaw | 2026.6.9+（安全基线）；v0.3.11 待测目标：2026.7.1 |
+| 支持的 OpenClaw | 2026.6.9+（安全基线）；v0.3.11 已在 2026.7.1 实机验证 |
 | 第三方插槽 dreaming sidecar | 6.5/6.6 之前 managed cron 可能显示 `ok` 但无产物（#92536）；已由 #93678 修复 |
 | 安装方式 | 优先 ClawHub：`openclaw plugins install clawhub:memory-lancedb-dreaming`；离线 `scripts/install.sh` |
 | 排障第一步 | 先跑 `dreaming_doctor` / `scripts/doctor.sh`，再开 issue |
@@ -147,7 +147,7 @@ OpenClaw **同一时间只启用一个 memory 插槽**。Dreaming 配置可以�
 
 ## 安装
 
-> v0.3.11 的最低安全基线是 **OpenClaw 2026.6.9**；待测环境使用 **2026.7.1**。
+> v0.3.11 的最低安全基线是 **OpenClaw 2026.6.9**；已在 **2026.7.1** 实机验证。
 
 ### 方式 A：ClawHub（推荐）
 
@@ -341,7 +341,7 @@ ls ~/.openclaw/plugins/memory-lancedb-dreaming/dist/index.js
 grep -r "workspace/memory-lancedb-dreaming" ~/.openclaw --include="*.json" || echo "no stale workspace path"
 ```
 
-### 1. 安装 v0.3.11 待测包并重启 gateway
+### 1. 安装 v0.3.11 并重启 gateway
 
 ```bash
 bash scripts/install.sh memory-lancedb-dreaming-0.3.11.tgz
@@ -421,7 +421,7 @@ MIT © 2026 airbing11
 
 ## 版本与变更
 
-- 当前待测版本：**0.3.11**（缓存隔离、共享运行锁、原子写入、版本/来源同步与安全发布基线）
+- 当前版本：**0.3.11**（缓存隔离、共享运行锁、原子写入、版本/来源同步与安全发布基线）
 - 页面版式基线：**0.2.7**（README 英文在前 + `## 中文说明`）
 - 变更记录：[CHANGELOG.md](./CHANGELOG.md)
 - 验收报告：[docs/v0.2.8-OPENCLAW-TEST-STEPS.md](./docs/v0.2.8-OPENCLAW-TEST-STEPS.md)
