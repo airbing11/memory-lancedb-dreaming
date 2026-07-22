@@ -1,6 +1,6 @@
-import fs from "node:fs/promises";
 import path from "node:path";
 import { appendDailyMemoryBlock } from "../phases/reports.js";
+import { atomicWriteTextFile } from "../utils.js";
 import { buildSnapshotFromWorkspace } from "./extract.js";
 import { computeDailyReportContentFingerprint } from "./fingerprint.js";
 import { renderDailyReport } from "./render.js";
@@ -9,8 +9,7 @@ export const DAILY_REPORT_START_MARKER = "<!-- openclaw:dreaming:daily-report:st
 export const DAILY_REPORT_END_MARKER = "<!-- openclaw:dreaming:daily-report:end -->";
 export async function writeDailyReportArchive(params) {
     const archivePath = path.join(params.workspaceDir, "memory", "dreaming", "daily", `${params.day}.md`);
-    await fs.mkdir(path.dirname(archivePath), { recursive: true });
-    await fs.writeFile(archivePath, `${params.text.trimEnd()}\n`, "utf-8");
+    await atomicWriteTextFile(archivePath, `${params.text.trimEnd()}\n`);
     return archivePath;
 }
 export async function publishDailyReport(params) {

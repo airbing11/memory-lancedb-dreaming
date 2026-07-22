@@ -6,9 +6,9 @@ import { runDreamingDoctor } from "./doctor.js";
 import { summarizePluginEntryPolicy, warnIfCronHookBlocked, warnIfModelOverrideBlocked } from "./hook-policy.js";
 import { RUNTIME_CRON_RECONCILE_INTERVAL_MS, STARTUP_CRON_RETRY_DELAY_MS, STARTUP_CRON_MAX_RETRIES, DAILY_REPORT_TRIGGER_TOKEN, DREAMING_TRIGGER_TOKEN, PLUGIN_VERSION, } from "./constants.js";
 import { reconcileManagedDreamingCron, resolveCronServiceFromCandidate, resolveEffectiveDailyReportCronExpr, } from "./cron.js";
-import { createDreamingDb, getCachedLancedbConfig, getResolvedLanceDbPluginId, initLancedbConfigCache, } from "./lancedb-client.js";
+import { createDreamingDb, getCachedLancedbConfig, getResolvedLanceDbPluginId, initLancedbConfigCache, refreshLancedbConfigCache, } from "./lancedb-client.js";
 import { runDreamingPipeline } from "./pipeline.js";
-import { endPipeline, resetPipelineForShutdown, tryBeginPipeline, } from "./pipeline-lock.js";
+import { endPipeline, tryBeginPipeline, } from "./pipeline-lock.js";
 import { readDreamingRunMetadata, recordDreamingRun } from "./run-metadata.js";
 import { isLlmCompleteAvailable, isSubagentRuntimeAvailable, resolveDreamingLlmRuntime, } from "./subagent-runtime.js";
 import { buildSnapshotFromPipeline, deliverDailyReportMessage, evaluateDailyReportDelivery, extractLatestNarrativeExcerpt, publishDailyReport, resolveReportDay, writeDailyReportDeliveryState, writeDailyReportSnapshot, } from "./daily-report/index.js";
@@ -19,7 +19,7 @@ function logDebug(api, message) {
         api.logger.debug(message);
     }
 }
-export default definePluginEntry({
+const plugin = definePluginEntry({
     id: "memory-lancedb-dreaming",
     name: "Dreaming (LanceDB)",
     description: "Light/REM/Deep sleep dreaming for memory-lancedb. Auto-manages cron, reads LanceDB vector memory, generates narrative dream diary entries, promotes memories, and publishes optional daily reports.",
@@ -139,6 +139,10 @@ export default definePluginEntry({
                 if (!activeConfig.dailyReport.enabled) {
                     return { ok: false, reason: "daily_report_disabled" };
                 }
+                if (!tryBeginPipeline("daily-report")) {
+                    api.logger.warn("memory-lancedb-dreaming: another dreaming/report operation is running, skipping daily report");
+                    return { ok: false, reason: "pipeline_busy" };
+                }
                 const nowMs = Date.now();
                 const day = resolveReportDay(nowMs, activeConfig.timezone);
                 try {
@@ -157,6 +161,9 @@ export default definePluginEntry({
                     api.logger.error(`memory-lancedb-dreaming: daily report publish failed: ${String(err)}`);
                     return { ok: false, reason: "error", error: String(err) };
                 }
+                finally {
+                    endPipeline("daily-report");
+                }
             };
             const refreshConfig = () => {
                 config = resolveDreamingConfig(rawConfig, api);
@@ -169,6 +176,7 @@ export default definePluginEntry({
                 }
                 try {
                     const activeConfig = refreshConfig();
+                    refreshLancedbConfigCache(api);
                     const db = createDreamingDb();
                     const llm = resolveDreamingLlmRuntime(api);
                     if ((activeConfig.rem.model || activeConfig.narrative.enabled) &&
@@ -397,7 +405,6 @@ export default definePluginEntry({
             }
             try {
                 api.on("gateway_stop", () => {
-                    resetPipelineForShutdown();
                     if (cronRetryTimer) {
                         clearInterval(cronRetryTimer);
                         cronRetryTimer = null;
@@ -603,7 +610,6 @@ export default definePluginEntry({
                         api.logger.info("memory-lancedb-dreaming: service started");
                     },
                     stop: () => {
-                        resetPipelineForShutdown();
                         if (cronRetryTimer) {
                             clearInterval(cronRetryTimer);
                             cronRetryTimer = null;
@@ -621,4 +627,5 @@ export default definePluginEntry({
         }
     },
 });
+export default plugin;
 //# sourceMappingURL=index.js.map

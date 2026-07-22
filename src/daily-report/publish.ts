@@ -1,8 +1,8 @@
-import fs from "node:fs/promises";
 import path from "node:path";
 import type { DailyReportConfig } from "../config.js";
 import { appendDailyMemoryBlock } from "../phases/reports.js";
 import type { PluginLogger } from "../cron.js";
+import { atomicWriteTextFile } from "../utils.js";
 import { buildSnapshotFromWorkspace } from "./extract.js";
 import { computeDailyReportContentFingerprint } from "./fingerprint.js";
 import { renderDailyReport } from "./render.js";
@@ -24,8 +24,7 @@ export async function writeDailyReportArchive(params: {
     "daily",
     `${params.day}.md`
   );
-  await fs.mkdir(path.dirname(archivePath), { recursive: true });
-  await fs.writeFile(archivePath, `${params.text.trimEnd()}\n`, "utf-8");
+  await atomicWriteTextFile(archivePath, `${params.text.trimEnd()}\n`);
   return archivePath;
 }
 

@@ -1,54 +1,96 @@
-# v0.1.9 — LanceDB Dreaming Plugin (First Public Release)
+# memory-lancedb-dreaming v0.3.11 — 待测说明
 
-## The Problem
+> **日期：** 2026-07-22
+> **安装包：** `memory-lancedb-dreaming-0.3.11.tgz`
 
-OpenClaw's built-in dreaming stops working when you switch to LanceDB vector storage. Even when it limps along, the output is just category labels — `fact`, `other` — barely useful.
+---
 
-## This Plugin Fixes That
+## 核心功能
 
-It restores the full Light→REM→Deep dreaming pipeline, replaces meaningless category labels with LLM-powered bilingual semantic themes（系统运维排故 / System Maintenance Troubleshooting）, and generates poetic dream diary entries (zh + en) that capture the texture of a day's work.
+Dreaming 插件：Light → REM → Deep 三阶段梦境循环 + 叙事日记 + 日报推送。
 
-## Features
+- **Light：** 扫描短期记忆，标记热度变化
+- **REM：** 主题聚类，发现跨日模式，提炼 lasting truth
+- **Deep：** 从 LanceDB 选出高分记忆 promoted 到 `MEMORY.md`
+- **Narrative：** 每日梦境的自然语言叙事
+- **Daily Report：** 零 LLM 的日报摘要 + 可选 IM 推送（飞书/企微等）
 
-- Light / REM / Deep three-phase dreaming pipeline
-- LanceDB vector memory integration (lookback filtering, dedupe, scoring)
-- REM semantic theme naming via LLM (bilingual zh/en theme labels)
-- Narrative dream diary appended to DREAMS.md (configurable languages)
-- Deep phase memory promotion to MEMORY.md with configurable thresholds
-- Auto-managed cron job + global pipeline mutex
-- Tools: `dreaming_status`, `dreaming_trigger`
+---
 
-## Required Configuration
+## v0.3.x 以来的重大变更
 
-Two entry-level fields are mandatory for full functionality:
+### 🔄 Cron Session 隔离（v0.3.1）— 解决 DeepSeek 缓存命中率暴跌
 
-| Field | Required when | If missing |
-|-------|--------------|------------|
-| `hooks.allowConversationAccess: true` | Always | Cron runs but pipeline never executes (~120s agent idle) |
-| `subagent.allowModelOverride: true` | When `rem.model` is set | REM falls back to category tags; narrative LLM fails silently |
+**问题：** Dreaming 的两个 cron 都跑在 `sessionTarget: "main"`。每次运行时会改写 main session 的上下文前缀，导致 DeepSeek V4 Flash 等 prefix-cache 模型的缓存命中率从 ~88% 暴跌至 ~6%。
 
-## Install (manual, OpenClaw 2026.5.20)
+**修改：** 将 `sessionTarget` 从 `main` 改为 `isolated`，`payload.kind` 从 `systemEvent` 改为 `agentTurn`。
 
-```bash
-mkdir -p ~/.openclaw/plugins/memory-lancedb-dreaming
-tar -xzf memory-lancedb-dreaming-0.1.9.tgz -C /tmp
-cp -r /tmp/package/* ~/.openclaw/plugins/memory-lancedb-dreaming/
-cd ~/.openclaw/plugins/memory-lancedb-dreaming && npm install --omit=dev
-```
+**效果：** 缓存命中率恢复至 88%+，每日节省约 10-15 元 cache miss token 费。
 
-Do **not** install under workspace/ — it breaks plugins.load.paths validation. Restart gateway after changing hooks.
+**兼容性：** 升级后首次 reconcile 自动迁移旧 cron，无需手动干预。
 
-## Changelog (0.1.5 → 0.1.9)
+### 🎯 反重复机制（v0.3.1~0.3.3）
 
-- Wire lookbackDays in Light/REM phases
-- Fix Deep promotedAt (only mark actually promoted entries)
-- Pipeline mutex for concurrent triggers
-- Runtime config reload + model alias support
-- LLM fallback via runtime.llm.complete
-- Startup diagnostics for hook/model-override permissions
-- 16 unit tests
+- **REM lasting truth 去重：** `truthDedupeWindowDays`（默认30天）+ `truthSimilarityThreshold`（默认0.42），避免同一主题反复被提炼
+- **cluster spotlight 冷却：** `clusterSpotlightCooldownDays`（默认5天），同一聚类主题在冷却期内不重复 spotlight
+- **Narrative 跳过无变化：** 当天无新内容时跳过叙事/日报，不重复旧内容
 
-## Known Limitations
+### 🔍 Deep Idle Novelty（v0.3.1）
 
-- REM clustering is category-based + LLM naming; semantic vector clustering planned for v0.2.0
-- openclaw plugin install unavailable on 2026.5.20 — manual tarball required
+`idleNoveltyAfterDays`（默认7天）：连续零 promotion 天后，REM 进入 novelty 模式——更紧的去重阈值，不重复旧 narrative。
+
+### 🩺 Dreaming Doctor（v0.3.1）
+
+`dreaming_doctor` 工具：一键检查 7 项健康指标——hook 权限、LanceDB 配置、cron 冲突、日报投递、Deep idle streak 等。
+
+### 📋 日报交付增强（v0.3.2~0.3.4）
+
+- 新增 `dailyReport.delivery.pushOn`（`always`/`changed`），仅内容变化时推送到 IM，减少噪音
+- 飞书推送默认配置
+
+### v0.3.11 稳定性与发布修复
+
+- Dreaming 与 Daily Report 使用同一个运行锁，避免并发改写报告/状态
+- Gateway 停止时不再提前清空在途任务锁
+- 每次 Dreaming 前刷新 LanceDB slot/path 配置
+- Markdown 报告、`MEMORY.md`、`DREAMS.md` 改为原子替换
+- 自动清理携带旧 trigger 的重命名 cron
+- 修复跨平台测试运行器和 cron migration 测试
+- package、manifest、运行时 version、lockfile、README、安装脚本统一为 0.3.11
+- `openclaw.extensions` 与 `runtimeExtensions` 均指向已打包的 `dist/index.js`
+- OpenClaw 最低安全基线提升到 2026.6.9
+
+---
+
+## ClawHub 0.3.10 调查结论
+
+0.3.10 实际已成功上传，在线 release 可以被精确查询，其 npm integrity
+与本地 `npm pack` 完全一致。它没有成为 `latest` 的原因是：
+
+- Static scan：`clean`
+- VirusTotal：`clean`
+- LLM review：`suspicious`
+- 审查摘要指出：插件拥有自动 cron / memory 权限，但兼容元数据允许存在已知漏洞的旧 OpenClaw
+- 因此 `latest` 保持在 0.3.9
+
+此前“legacy-zip 与 code-plugin 无法合并”的判断不是 0.3.10 的真实阻塞点；
+无需改包名或清理旧 package。
+
+### 0.3.11 发布策略
+
+1. 小泡先使用本地 `.tgz` 完成 OpenClaw 2026.7.1 实机验收
+2. 验收通过后再提交 GitHub，创建不可移动的 `v0.3.11` tag
+3. 从真实 Git checkout 生成 npm ClawPack，不从无 `.git` 的源码归档发布
+4. 发布时绑定准确的 source repo / commit / ref
+5. 发布后确认 `llmAnalysis.status=clean`、`latestVersion=0.3.11`
+
+---
+
+## 小泡验收重点
+
+- `dreaming_status.version` 必须显示 `0.3.11`
+- 两条 cron 必须为 `isolated` + `agentTurn`
+- 旧 `main` + `systemEvent` cron 应自动迁移，重命名旧 trigger cron 应被清理
+- `dreaming_trigger phase=all` 与日报 cron 不得重叠运行
+- Light / REM / Deep / Narrative / Daily Report 产物正常
+- `dreaming_doctor` 无 fail；Gateway 日志无重复 cron 或并发写入错误

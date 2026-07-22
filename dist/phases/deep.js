@@ -4,7 +4,7 @@ import { resolveDeepConfig } from "../config.js";
 import { PROMOTION_MARKER_PREFIX } from "../constants.js";
 import { appendDeepHistoryRun } from "../deep-history.js";
 import { readDreamingState, writeDreamingState } from "../state.js";
-import { formatDreamingDay, withTrailingNewline } from "../utils.js";
+import { atomicWriteTextFile, formatDreamingDay, withTrailingNewline } from "../utils.js";
 import { writePhaseReport } from "./reports.js";
 import { rankPromotionCandidates } from "./scoring.js";
 function extractPromotionMarkers(memoryText) {
@@ -51,7 +51,7 @@ export async function runDeepSleep(params) {
     if (toAppend.length > 0) {
         const header = existingMemory.trim().length > 0 ? "" : "# Long-Term Memory\n\n";
         const section = buildPromotionSection(toAppend, params.nowMs, params.timezone);
-        await fs.writeFile(memoryPath, `${header}${withTrailingNewline(existingMemory)}${section}`, "utf-8");
+        await atomicWriteTextFile(memoryPath, `${header}${withTrailingNewline(existingMemory)}${section}`);
         const nowIso = new Date(params.nowMs).toISOString();
         for (const candidate of toAppend) {
             const entry = state.entries[candidate.memoryId] ?? candidate.state;

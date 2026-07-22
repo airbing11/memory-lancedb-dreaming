@@ -6,7 +6,7 @@ import { appendDeepHistoryRun } from "../deep-history.js";
 import type { MemoryDB } from "../memory-db.js";
 import { readDreamingState, writeDreamingState } from "../state.js";
 import type { PromotionCandidate } from "../types.js";
-import { formatDreamingDay, withTrailingNewline } from "../utils.js";
+import { atomicWriteTextFile, formatDreamingDay, withTrailingNewline } from "../utils.js";
 import { writePhaseReport } from "./reports.js";
 import { rankPromotionCandidates } from "./scoring.js";
 
@@ -79,10 +79,9 @@ export async function runDeepSleep(params: {
   if (toAppend.length > 0) {
     const header = existingMemory.trim().length > 0 ? "" : "# Long-Term Memory\n\n";
     const section = buildPromotionSection(toAppend, params.nowMs, params.timezone);
-    await fs.writeFile(
+    await atomicWriteTextFile(
       memoryPath,
-      `${header}${withTrailingNewline(existingMemory)}${section}`,
-      "utf-8"
+      `${header}${withTrailingNewline(existingMemory)}${section}`
     );
 
     const nowIso = new Date(params.nowMs).toISOString();

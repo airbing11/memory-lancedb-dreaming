@@ -1,20 +1,24 @@
-let pipelineRunning = false;
+export type PipelineOperation = "dreaming" | "daily-report";
+
+let activeOperation: PipelineOperation | null = null;
 
 export function isPipelineRunning(): boolean {
-  return pipelineRunning;
+  return activeOperation !== null;
 }
 
-/** Returns false when another dreaming run is already in progress. */
-export function tryBeginPipeline(): boolean {
-  if (pipelineRunning) return false;
-  pipelineRunning = true;
+export function getActivePipelineOperation(): PipelineOperation | null {
+  return activeOperation;
+}
+
+/** Returns false when another dreaming or report operation is already in progress. */
+export function tryBeginPipeline(operation: PipelineOperation = "dreaming"): boolean {
+  if (activeOperation !== null) return false;
+  activeOperation = operation;
   return true;
 }
 
-export function endPipeline(): void {
-  pipelineRunning = false;
-}
-
-export function resetPipelineForShutdown(): void {
-  pipelineRunning = false;
+export function endPipeline(operation: PipelineOperation = "dreaming"): void {
+  if (activeOperation === operation) {
+    activeOperation = null;
+  }
 }

@@ -34,6 +34,9 @@ export function isLegacyConflictCronJob(job) {
         return false;
     const name = normalizeTrimmedString(job.name)?.toLowerCase() ?? "";
     const description = normalizeTrimmedString(job.description)?.toLowerCase() ?? "";
+    const payloadText = normalizeTrimmedString(job.payload?.text ?? job.payload?.message);
+    if (payloadText === DREAMING_TRIGGER_TOKEN)
+        return true;
     if (name === "dreaming-plugin-healthcheck")
         return true;
     if (name.includes("dreaming") && name.includes("healthcheck"))

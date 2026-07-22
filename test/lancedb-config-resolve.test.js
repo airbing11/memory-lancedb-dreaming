@@ -5,7 +5,12 @@ import {
   resolveLanceDbMemoryEntryFromConfig,
   resolveMemorySlotPluginId,
 } from "../dist/lancedb-config-resolve.js";
-import { parseMemoryLancedbEntry } from "../dist/lancedb-client.js";
+import {
+  getCachedLancedbConfig,
+  initLancedbConfigCache,
+  parseMemoryLancedbEntry,
+  refreshLancedbConfigCache,
+} from "../dist/lancedb-client.js";
 
 const lancedbConfig = {
   dbPath: "~/.openclaw/memory/lancedb",
@@ -103,5 +108,30 @@ describe("lancedb config resolve", () => {
     );
     assert.equal(entryHasLancedbConfig({ config: { dbPath: "/data/lance" } }), true);
     assert.equal(entryHasLancedbConfig({ config: { enabled: true } }), false);
+  });
+
+  it("refreshes the cached path when the active slot config changes", () => {
+    const config = {
+      plugins: {
+        slots: { memory: "memory-lancedb-pro" },
+        entries: {
+          "memory-lancedb-pro": { config: structuredClone(lancedbConfig) },
+        },
+      },
+    };
+    const api = {
+      config,
+      resolvePath(value) {
+        return value;
+      },
+      logger: { info() {}, warn() {}, error() {} },
+    };
+
+    initLancedbConfigCache(api);
+    assert.equal(getCachedLancedbConfig()?.dbPath, "~/.openclaw/memory/lancedb");
+
+    config.plugins.entries["memory-lancedb-pro"].config.dbPath = "/new/lancedb";
+    refreshLancedbConfigCache(api);
+    assert.equal(getCachedLancedbConfig()?.dbPath, "/new/lancedb");
   });
 });

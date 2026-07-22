@@ -1,5 +1,8 @@
 import { definePluginEntry } from "openclaw/plugin-sdk/plugin-entry";
-import type { OpenClawPluginApi } from "openclaw/plugin-sdk/plugin-entry";
+import type {
+  OpenClawPluginApi,
+  OpenClawPluginDefinition,
+} from "openclaw/plugin-sdk/plugin-entry";
 import { Type } from "typebox";
 import {
   DreamingConfigSchema,
@@ -33,11 +36,11 @@ import {
   getCachedLancedbConfig,
   getResolvedLanceDbPluginId,
   initLancedbConfigCache,
+  refreshLancedbConfigCache,
 } from "./lancedb-client.js";
 import { runDreamingPipeline, type DreamingRunResult } from "./pipeline.js";
 import {
   endPipeline,
-  resetPipelineForShutdown,
   tryBeginPipeline,
 } from "./pipeline-lock.js";
 import { readDreamingRunMetadata, recordDreamingRun } from "./run-metadata.js";
@@ -70,7 +73,7 @@ function logDebug(api: OpenClawPluginApi, message: string): void {
   }
 }
 
-export default definePluginEntry({
+const plugin: OpenClawPluginDefinition = definePluginEntry({
   id: "memory-lancedb-dreaming",
   name: "Dreaming (LanceDB)",
   description:
@@ -220,6 +223,12 @@ export default definePluginEntry({
         if (!activeConfig.dailyReport.enabled) {
           return { ok: false as const, reason: "daily_report_disabled" as const };
         }
+        if (!tryBeginPipeline("daily-report")) {
+          api.logger.warn(
+            "memory-lancedb-dreaming: another dreaming/report operation is running, skipping daily report"
+          );
+          return { ok: false as const, reason: "pipeline_busy" as const };
+        }
         const nowMs = Date.now();
         const day = resolveReportDay(nowMs, activeConfig.timezone);
         try {
@@ -238,6 +247,8 @@ export default definePluginEntry({
             `memory-lancedb-dreaming: daily report publish failed: ${String(err)}`
           );
           return { ok: false as const, reason: "error" as const, error: String(err) };
+        } finally {
+          endPipeline("daily-report");
         }
       };
 
@@ -257,6 +268,7 @@ export default definePluginEntry({
 
         try {
           const activeConfig = refreshConfig();
+          refreshLancedbConfigCache(api);
           const db = createDreamingDb();
           const llm = resolveDreamingLlmRuntime(api);
           if (
@@ -527,7 +539,6 @@ export default definePluginEntry({
 
       try {
         api.on("gateway_stop", () => {
-          resetPipelineForShutdown();
           if (cronRetryTimer) {
             clearInterval(cronRetryTimer);
             cronRetryTimer = null;
@@ -748,7 +759,6 @@ export default definePluginEntry({
             api.logger.info("memory-lancedb-dreaming: service started");
           },
           stop: () => {
-            resetPipelineForShutdown();
             if (cronRetryTimer) {
               clearInterval(cronRetryTimer);
               cronRetryTimer = null;
@@ -764,3 +774,5 @@ export default definePluginEntry({
     }
   },
 });
+
+export default plugin;

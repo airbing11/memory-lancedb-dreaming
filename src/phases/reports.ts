@@ -1,6 +1,6 @@
 import fs from "node:fs/promises";
 import path from "node:path";
-import { formatDreamingDay, withTrailingNewline } from "../utils.js";
+import { atomicWriteTextFile, formatDreamingDay, withTrailingNewline } from "../utils.js";
 
 export async function writePhaseReport(params: {
   workspaceDir: string;
@@ -26,7 +26,7 @@ export async function writePhaseReport(params: {
         : "Deep Sleep";
   const body =
     params.bodyLines.length > 0 ? params.bodyLines.join("\n") : "- No notable updates.";
-  await fs.writeFile(reportPath, `# ${title}\n\n${body}\n`, "utf-8");
+  await atomicWriteTextFile(reportPath, `# ${title}\n\n${body}\n`);
   return reportPath;
 }
 
@@ -67,6 +67,6 @@ export async function appendDailyMemoryBlock(params: {
   } else {
     updated = original.trim().length > 0 ? `${original.trimEnd()}\n\n${block}` : `${block}`;
   }
-  await fs.writeFile(dailyPath, withTrailingNewline(updated), "utf-8");
+  await atomicWriteTextFile(dailyPath, withTrailingNewline(updated));
   return dailyPath;
 }

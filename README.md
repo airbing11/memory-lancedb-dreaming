@@ -2,7 +2,11 @@
 
 Light/REM/Deep memory consolidation for OpenClaw agents using LanceDB / `memory-lancedb-pro`.
 
-OpenClaw currently has one active memory slot. The built-in dreaming pipeline is tied to `memory-core`, so agents that use LanceDB for vector memory can lose meaningful Light → REM → Deep consolidation. This plugin keeps LanceDB as the storage backend and runs dreaming as an external OpenClaw plugin.
+OpenClaw has one active memory slot and can resolve dreaming settings from that slot owner, but vector-native consolidation behavior depends on the selected provider. This companion plugin keeps LanceDB as the storage backend and supplies its own Light → REM → Deep pipeline, narrative diary, and daily report.
+
+**v0.3.x** runs both dreaming and daily report cron in `sessionTarget: "isolated"` with `payload.kind: "agentTurn"` — no more main-session cache pollution, 88%+ prefix cache hit rate restored.
+
+**v0.3.11+** publishes a production-only ClawPack controlled by `package.json#files`: compiled runtime JavaScript, `openclaw.plugin.json`, `README.md`, and `scripts/install.sh`. Source, tests, maps, declarations, and development tooling are excluded.
 
 **v0.2.8** stops daily reports from recycling the same old material — text-level REM truth dedupe, exclude promoted memories, narrative freshness on zero-promotion days, idle novelty mode after Deep stalls, and `dreaming_doctor` install self-check.
 
@@ -54,6 +58,7 @@ The plugin resolves a practical OpenClaw trade-off:
 | REM truth / exemplar rotation | No | Yes (v0.2.6+) |
 | REM text anti-repeat / narrative freshness | No | Yes (v0.2.8+) |
 | Install self-check (`dreaming_doctor`) | No | Yes (v0.2.8+) |
+| Main session cache isolation | No | Yes (v0.3.x+) |
 
 You do not have to switch back to `memory-core` just to keep dreaming.
 
@@ -61,8 +66,7 @@ You do not have to switch back to `memory-core` just to keep dreaming.
 
 | Item | Notes |
 |------|-------|
-| Verified OpenClaw | 2026.5.20, 2026.5.27, 2026.6.5 (VPS, LanceDB slot) |
-| Known regression | 2026.5.22 event loop (#86201/#86194) — avoid for production |
+| Supported OpenClaw | 2026.6.9+ (security baseline); v0.3.11 test target: 2026.7.1 |
 | Third-party slot sidecar | Before 6.5/6.6, managed cron could show `ok` with no artifacts (#92536); fixed in #93678. Fallback: add `memory-core` to `plugins.allow` with `enabled: false` |
 | Install | Prefer ClawHub: `openclaw plugins install clawhub:memory-lancedb-dreaming`; offline: `scripts/install.sh` |
 | Troubleshooting | Run `dreaming_doctor` / `scripts/doctor.sh` first |
@@ -72,6 +76,8 @@ You do not have to switch back to `memory-core` just to keep dreaming.
 ## 中文说明
 
 让 LanceDB 的记忆真正会做梦。这个插件为使用 LanceDB / `memory-lancedb-pro` 的 OpenClaw 智能体恢复 Light → REM → Deep 梦境巩固能力：REM 主题命名、Deep 记忆提升、中英双语 `DREAMS.md`，以及可选飞书 / 企微日报推送。
+
+**v0.3.x** 将梦境和日报 cron 改为独立 session 运行，不再污染主对话缓存，88%+ 前缀缓存命中率。
 
 **v0.2.8** 解决长期运行后日报「换措辞但素材重复」：REM 文本级去重、排除已提炼记忆、叙事新鲜度、Deep 空转 novelty 模式、`dreaming_doctor` 自检。
 
@@ -102,15 +108,26 @@ You do not have to switch back to `memory-core` just to keep dreaming.
 
 | 项 | 说明 |
 |----|------|
-| 已验证 OpenClaw | 2026.5.20、2026.5.27、2026.6.5（腾讯云 VPS，LanceDB 插槽） |
-| 已知回归 | 2026.5.22 event loop（#86201/#86194），3–8s 延迟，避免使用 |
+| 支持的 OpenClaw | 2026.6.9+（安全基线）；v0.3.11 待测目标：2026.7.1 |
 | 第三方插槽 dreaming sidecar | 6.5/6.6 之前 managed cron 可能显示 `ok` 但无产物（#92536）；已由 #93678 修复 |
 | 安装方式 | 优先 ClawHub：`openclaw plugins install clawhub:memory-lancedb-dreaming`；离线 `scripts/install.sh` |
 | 排障第一步 | 先跑 `dreaming_doctor` / `scripts/doctor.sh`，再开 issue |
 
+### v0.3.11 ClawHub 发布说明
+
+0.3.11 统一发布元数据、来源版本与安全兼容基线，并把 ClawPack 精简为运行所需文件。开发测试脚本不进入发布 artifact。
+
+**处理方式：**
+1. `package.json#files` 仅包含 `dist/**/*.js`、manifest、README 与安装脚本
+2. 最低 OpenClaw / Plugin API 基线提升到 2026.6.9
+3. 发布前要求 package、manifest、运行时版本常量与 Git tag 完全一致
+4. ClawHub 发布使用 npm ClawPack `.tgz`，并绑定准确的 Git commit/tag
+
+验证：`npm pack --dry-run`、`clawhub package validate` 与 `clawhub package publish --dry-run` 必须全部通过。
+
 ### 为什么需要这个插件
 
-OpenClaw **同一时间只启用一个 memory 插槽**。内置 **dreaming** 挂在 **memory-core** 下，读写的是 core 记忆，**不是** LanceDB 向量表。插槽换成 LanceDB 后，原生管线**无法**对向量库跑完整 Light / REM / Deep。
+OpenClaw **同一时间只启用一个 memory 插槽**。Dreaming 配置可以跟随 slot owner，但是否对 LanceDB 向量执行完整 Light / REM / Deep 取决于该 provider。本插件提供独立的 LanceDB 向量管线与可读日报层。
 
 **memory-lancedb-dreaming** = **继续用 LanceDB** + **补回整套 dreaming** + 可选每日 IM 日报。
 
@@ -126,12 +143,11 @@ OpenClaw **同一时间只启用一个 memory 插槽**。内置 **dreaming** 挂
 | 日报双推修复 / IM 去重 | ❌ | ✅ v0.2.6+ |
 | REM 反重复 / 叙事新鲜度 | ❌ | ✅ v0.2.8+ |
 | `dreaming_doctor` 自检 | ❌ | ✅ v0.2.8+ |
+| 主对话缓存隔离 | ❌ | ✅ v0.3.x+ |
 
 ## 安装
 
-> OpenClaw 2026.5.20：`openclaw plugin install` **仍不可用**（`Unknown command: openclaw plugin`）。新版优先 **ClawHub**；离线用手动安装。
->
-> 推荐生产版本：**OpenClaw 2026.5.20**（避开 2026.5.22 回归）。
+> v0.3.11 的最低安全基线是 **OpenClaw 2026.6.9**；待测环境使用 **2026.7.1**。
 
 ### 方式 A：ClawHub（推荐）
 
@@ -142,14 +158,14 @@ openclaw plugins install clawhub:memory-lancedb-dreaming
 ### 方式 B：安装脚本
 
 ```bash
-bash scripts/install.sh memory-lancedb-dreaming-0.2.9.tgz
+bash scripts/install.sh memory-lancedb-dreaming-0.3.11.tgz
 ```
 
 ### 方式 C：手动解压
 
 ```bash
 mkdir -p ~/.openclaw/plugins/memory-lancedb-dreaming
-tar -xzf memory-lancedb-dreaming-0.2.9.tgz -C /tmp
+tar -xzf memory-lancedb-dreaming-0.3.11.tgz -C /tmp
 cp -r /tmp/package/* ~/.openclaw/plugins/memory-lancedb-dreaming/
 cd ~/.openclaw/plugins/memory-lancedb-dreaming && npm install --omit=dev
 ```
@@ -273,7 +289,7 @@ Dreaming 从 **当前 memory 插槽** 读取 LanceDB 的 `dbPath` / `embedding`�
 | LanceDB Memory Dreaming | `0 3 * * *` | 跑 Light/REM/Deep + 写快照/文件；**不直接推送 IM**（v0.2.6+） |
 | Dreaming Daily Report | `0 4 * * *` | 刷新日报文件 + **负责唯一 IM 推送**；与主 cron 冲突时自动错开 30 分钟 |
 
-两条均为 `main` + `systemEvent`（零 LLM 触发）。OpenClaw **不允许** 在 main cron 上挂 `delivery`，因此推送在插件 `before_agent_reply` 内完成，不依赖 cron.delivery。
+两条均为 `isolated` + `agentTurn`，避免污染 main session 的前缀缓存。Cron 本身不配置 `delivery`；推送由插件在触发处理内完成。
 
 ### 推送配置示例（飞书）
 
@@ -314,7 +330,7 @@ Dreaming 从 **当前 memory 插槽** 读取 LanceDB 的 `dbPath` / `embedding`�
 
 ## OpenClaw 测试流程
 
-在 Ubuntu / OpenClaw 2026.5.20 上按顺序执行：
+在 Ubuntu / OpenClaw 2026.7.1 上按顺序执行：
 
 ### 0. 前置检查
 
@@ -325,11 +341,10 @@ ls ~/.openclaw/plugins/memory-lancedb-dreaming/dist/index.js
 grep -r "workspace/memory-lancedb-dreaming" ~/.openclaw --include="*.json" || echo "no stale workspace path"
 ```
 
-### 1. 安装 v0.2.9 并重启 gateway
+### 1. 安装 v0.3.11 待测包并重启 gateway
 
 ```bash
-openclaw plugins install clawhub:memory-lancedb-dreaming
-# 或: bash scripts/install.sh memory-lancedb-dreaming-0.2.9.tgz
+bash scripts/install.sh memory-lancedb-dreaming-0.3.11.tgz
 openclaw gateway stop 2>/dev/null || true
 openclaw gateway run
 ```
@@ -406,7 +421,7 @@ MIT © 2026 airbing11
 
 ## 版本与变更
 
-- 当前推荐版本：**0.2.9**（0.2.8 反重复 + `dreaming_doctor` 的 ClawHub 打包热修；保留 0.2.6 日报去重与 0.2.4 插槽兼容）
+- 当前待测版本：**0.3.11**（缓存隔离、共享运行锁、原子写入、版本/来源同步与安全发布基线）
 - 页面版式基线：**0.2.7**（README 英文在前 + `## 中文说明`）
 - 变更记录：[CHANGELOG.md](./CHANGELOG.md)
 - 验收报告：[docs/v0.2.8-OPENCLAW-TEST-STEPS.md](./docs/v0.2.8-OPENCLAW-TEST-STEPS.md)

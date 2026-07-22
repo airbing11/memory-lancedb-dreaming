@@ -1,6 +1,8 @@
 import type { DreamingState, DreamingStateEntry } from "./state.js";
 export declare const VECTOR_DEDUPE_THRESHOLD = 0.92;
 export declare const TEXT_DEDUPE_THRESHOLD = 0.88;
+/** Replace a text file atomically so interruption cannot leave a partial document. */
+export declare function atomicWriteTextFile(filePath: string, content: string): Promise<void>;
 export declare function normalizeTrimmedString(value: unknown): string | undefined;
 export declare function includesSystemEventToken(body: string, token: string): boolean;
 export declare function calculateLookbackCutoffMs(nowMs: number, lookbackDays: number): number;

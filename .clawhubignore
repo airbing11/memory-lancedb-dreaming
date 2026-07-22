@@ -1,0 +1,36 @@
+# Supplemental exclusions for extracted-file/legacy ClawHub tooling.
+# Current code-plugin ClawPack publishing is controlled by package.json "files".
+# Note: patterns with trailing / apply to directories
+
+# Non-production directories
+test/
+src/
+docs/
+.github/
+reports/
+
+# Specific dev-only scripts (keep install.sh for setup)
+scripts/test.mjs
+scripts/doctor.sh
+scripts/verify-smoke.sh
+
+# Generated TypeScript artifacts
+*.ts
+*.tsbuildinfo
+*.d.ts
+*.d.ts.map
+*.js.map
+
+# Dev config and artifacts
+.gitignore
+package-lock.json
+tsconfig.json
+node_modules/
+.clawhub/
+.clawdhub/
+.clawhubignore
+*.tgz
+memory-lancedb-dreaming-*.tgz
+
+# Optional ClawHub metadata
+clawhub.json

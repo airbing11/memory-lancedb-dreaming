@@ -33,4 +33,15 @@ describe("isLegacyConflictCronJob", () => {
       true
     );
   });
+
+  it("flags renamed legacy jobs that still carry the dreaming trigger", () => {
+    assert.equal(
+      isLegacyConflictCronJob({
+        id: "4",
+        name: "custom old dream",
+        payload: { kind: "systemEvent", text: DREAMING_TRIGGER_TOKEN },
+      }),
+      true
+    );
+  });
 });

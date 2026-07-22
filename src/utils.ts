@@ -1,9 +1,23 @@
+import fs from "node:fs/promises";
+import path from "node:path";
 import type { DreamingState, DreamingStateEntry } from "./state.js";
 
 const DAY_MS = 24 * 60 * 60 * 1000;
 
 export const VECTOR_DEDUPE_THRESHOLD = 0.92;
 export const TEXT_DEDUPE_THRESHOLD = 0.88;
+
+/** Replace a text file atomically so interruption cannot leave a partial document. */
+export async function atomicWriteTextFile(filePath: string, content: string): Promise<void> {
+  await fs.mkdir(path.dirname(filePath), { recursive: true });
+  const tmpPath = `${filePath}.${process.pid}.${Date.now()}.tmp`;
+  try {
+    await fs.writeFile(tmpPath, content, "utf-8");
+    await fs.rename(tmpPath, filePath);
+  } finally {
+    await fs.rm(tmpPath, { force: true }).catch(() => {});
+  }
+}
 
 export function normalizeTrimmedString(value: unknown): string | undefined {
   if (typeof value !== "string") return undefined;

@@ -5,7 +5,7 @@ import type { NarrativeConfig, NarrativeLanguage } from "./config.js";
 import type { PluginLogger } from "./cron.js";
 import { runDreamingTextPrompt } from "./llm-subagent.js";
 import type { LlmCompleteFn, SubagentRuntime } from "./types.js";
-import { createAsyncLock } from "./utils.js";
+import { atomicWriteTextFile, createAsyncLock } from "./utils.js";
 
 const NARRATIVE_EN_SYSTEM_PROMPT = [
   "You are keeping a dream diary. Write a single entry in first person.",
@@ -198,7 +198,7 @@ async function appendNarrativeEntry(params: {
       const diarySection = `# Dream Diary\n\n${DIARY_START_MARKER}${entry}\n${DIARY_END_MARKER}\n`;
       updated = existing.trim().length === 0 ? diarySection : `${diarySection}\n${existing}`;
     }
-    await fs.writeFile(dreamsPath, updated.endsWith("\n") ? updated : `${updated}\n`, "utf-8");
+    await atomicWriteTextFile(dreamsPath, updated.endsWith("\n") ? updated : `${updated}\n`);
   });
 }
 

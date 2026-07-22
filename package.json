@@ -1,16 +1,14 @@
 {
   "name": "memory-lancedb-dreaming",
-  "version": "0.3.3",
+  "version": "0.3.11",
   "description": "Dreaming plugin for memory-lancedb \u2014 Light/REM/Deep phases, DREAMS.md, daily report with optional channel push (Feishu/WeCom/etc.).",
   "type": "module",
   "main": "./dist/index.js",
   "files": [
-    "dist/",
+    "dist/**/*.js",
     "openclaw.plugin.json",
     "README.md",
-    "scripts/install.sh",
-    "scripts/verify-smoke.sh",
-    "scripts/doctor.sh"
+    "scripts/install.sh"
   ],
   "scripts": {
     "build": "tsc",
@@ -20,36 +18,39 @@
   },
   "openclaw": {
     "extensions": [
-      "./src/index.ts"
+      "./dist/index.js"
     ],
     "runtimeExtensions": [
       "./dist/index.js"
     ],
     "compat": {
-      "pluginApi": ">=2026.5.18",
-      "minGatewayVersion": "2026.5.18"
+      "pluginApi": ">=2026.6.9",
+      "minGatewayVersion": "2026.6.9"
     },
     "build": {
-      "openclawVersion": "2026.5.20",
-      "pluginSdkVersion": "2026.5.20"
+      "openclawVersion": "2026.7.1",
+      "pluginSdkVersion": "2026.7.1"
     }
   },
   "dependencies": {
     "@lancedb/lancedb": "^0.29.0",
     "apache-arrow": "^18.1.0",
-    "openai": ">=4.0.0",
     "typebox": "^1.0.0"
   },
   "devDependencies": {
+    "openclaw": "2026.7.1",
     "typescript": "^5.9.3"
   },
   "peerDependencies": {
-    "@openclaw/memory-lancedb": ">=2026.5.18",
-    "openclaw": ">=2026.5.18"
+    "@openclaw/memory-lancedb": ">=2026.6.9",
+    "openclaw": ">=2026.6.9"
   },
   "peerDependenciesMeta": {
     "@openclaw/memory-lancedb": {
-      "optional": false
+      "optional": true
+    },
+    "openclaw": {
+      "optional": true
     }
   },
   "author": "airbing11",

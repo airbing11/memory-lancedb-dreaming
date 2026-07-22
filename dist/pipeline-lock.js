@@ -1,18 +1,20 @@
-let pipelineRunning = false;
+let activeOperation = null;
 export function isPipelineRunning() {
-    return pipelineRunning;
+    return activeOperation !== null;
 }
-/** Returns false when another dreaming run is already in progress. */
-export function tryBeginPipeline() {
-    if (pipelineRunning)
+export function getActivePipelineOperation() {
+    return activeOperation;
+}
+/** Returns false when another dreaming or report operation is already in progress. */
+export function tryBeginPipeline(operation = "dreaming") {
+    if (activeOperation !== null)
         return false;
-    pipelineRunning = true;
+    activeOperation = operation;
     return true;
 }
-export function endPipeline() {
-    pipelineRunning = false;
-}
-export function resetPipelineForShutdown() {
-    pipelineRunning = false;
+export function endPipeline(operation = "dreaming") {
+    if (activeOperation === operation) {
+        activeOperation = null;
+    }
 }
 //# sourceMappingURL=pipeline-lock.js.map

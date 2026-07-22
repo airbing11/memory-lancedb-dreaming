@@ -1,5 +1,44 @@
 # Changelog
 
+## [0.3.11] - 2026-07-22
+### Fixed
+- synchronize `package.json`, `openclaw.plugin.json`, runtime `PLUGIN_VERSION`, lockfile, docs, and install examples
+- declare both `openclaw.extensions` and `runtimeExtensions` against the packaged `dist/index.js` for OpenClaw 2026.7.1 loader compatibility
+- raise the supported OpenClaw / plugin API security baseline to 2026.6.9
+- serialize dreaming and daily-report operations through one shared lock
+- keep in-flight work locked during Gateway/service shutdown instead of clearing the lock early
+- refresh LanceDB slot configuration before each dreaming run
+- atomically replace generated Markdown files to avoid partial documents after interruption
+- migrate renamed legacy cron jobs carrying the old dreaming trigger
+- update cron tests for `isolated` + `agentTurn` and add migration/lock coverage
+- make the test runner work on Windows, Linux, and macOS
+
+### Packaging
+- publish only compiled JavaScript plus required metadata/docs/install script
+- remove the unused direct `openai` dependency
+- make `@openclaw/memory-lancedb` an optional peer because `memory-lancedb-pro` is also supported
+- remove the unpublished `src/index.ts` entrypoint from ClawPack metadata
+- require an exact Git commit/tag when publishing to ClawHub
+
+### ClawHub
+- 0.3.10 uploaded successfully as an npm-pack artifact, but its LLM review was
+  `suspicious` because compatibility metadata allowed vulnerable OpenClaw
+  versions; `latest` therefore remained on 0.3.9
+- the earlier `legacy-zip` versus `code-plugin` diagnosis was not the 0.3.10
+  blocker
+
+## [0.3.8] - 2026-07-22
+### Fixed
+- rev bump and republish (v0.3.7 already existed on ClawHub from prior partial publish)
+
+## [0.3.7] - 2026-07-22
+### Fixed
+- sync openclaw.plugin.json version with package.json
+- add .clawhubignore for clean production-only publish (48 files vs 256)
+### Security
+- ClawHub ClawScan flagged `scripts/test.mjs` (used `spawnSync`) as `suspicious.dangerous_exec`. Fixed by: (a) adding `.clawhubignore` excluding `scripts/`, `test/`, `src/`, `.github/`, `*.ts`, etc., (b) rewriting `scripts/test.mjs` to use `fork()` instead of `spawnSync`, (c) trimming `package.json "files"` to production-only.
+- TODO: verify the next `clawhub package publish --family code-plugin` produces an indexable release.
+
 ## 0.3.1 — 2026-07-22
 
 主题：**Cron session 隔离 — 消除 Dreaming 对 main session 缓存前缀的污染**。

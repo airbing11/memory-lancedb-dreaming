@@ -1,6 +1,20 @@
+import fs from "node:fs/promises";
+import path from "node:path";
 const DAY_MS = 24 * 60 * 60 * 1000;
 export const VECTOR_DEDUPE_THRESHOLD = 0.92;
 export const TEXT_DEDUPE_THRESHOLD = 0.88;
+/** Replace a text file atomically so interruption cannot leave a partial document. */
+export async function atomicWriteTextFile(filePath, content) {
+    await fs.mkdir(path.dirname(filePath), { recursive: true });
+    const tmpPath = `${filePath}.${process.pid}.${Date.now()}.tmp`;
+    try {
+        await fs.writeFile(tmpPath, content, "utf-8");
+        await fs.rename(tmpPath, filePath);
+    }
+    finally {
+        await fs.rm(tmpPath, { force: true }).catch(() => { });
+    }
+}
 export function normalizeTrimmedString(value) {
     if (typeof value !== "string")
         return undefined;
