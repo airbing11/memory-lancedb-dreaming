@@ -25,7 +25,17 @@ export type CronJob = {
   schedule?: { kind?: string; expr?: string; tz?: string };
   sessionTarget?: string;
   wakeMode?: string;
-  payload?: { kind?: string; text?: string; message?: string; timeoutSeconds?: number };
+  payload?: {
+    kind?: string;
+    text?: string;
+    message?: string;
+    timeoutSeconds?: number;
+    model?: string;
+    thinking?: string;
+    fallbacks?: string[];
+    toolsAllow?: string[];
+    lightContext?: boolean;
+  };
   delivery?: CronDelivery;
   createdAtMs?: number;
 };
@@ -63,11 +73,11 @@ export function buildManagedDreamingCronJob(config: DreamingConfig) {
       expr: config.cron,
       ...(config.timezone ? { tz: config.timezone } : {}),
     },
-    sessionTarget: "main" as const,
+    sessionTarget: "isolated" as const,
     wakeMode: "now" as const,
     payload: {
-      kind: "systemEvent" as const,
-      text: DREAMING_TRIGGER_TOKEN,
+      kind: "agentTurn" as const,
+      message: DREAMING_TRIGGER_TOKEN,
     },
   };
 }
@@ -75,7 +85,7 @@ export function buildManagedDreamingCronJob(config: DreamingConfig) {
 function isManagedDreamingJob(job: CronJob): boolean {
   if (normalizeTrimmedString(job.description)?.includes(MANAGED_DREAMING_CRON_TAG)) return true;
   const name = normalizeTrimmedString(job.name);
-  const payloadText = normalizeTrimmedString(job.payload?.text);
+  const payloadText = normalizeTrimmedString(job.payload?.text ?? job.payload?.message);
   return name === MANAGED_DREAMING_CRON_NAME && payloadText === DREAMING_TRIGGER_TOKEN;
 }
 
@@ -140,7 +150,7 @@ function buildManagedDreamingPatch(
 ): Partial<Omit<CronJob, "id">> | null {
   const schedule = desired.schedule;
   const payload = desired.payload;
-  if (!schedule?.expr || !payload?.text) return null;
+  if (!schedule?.expr || !payload?.message) return null;
 
   const patch: Partial<Omit<CronJob, "id">> = {};
   if (normalizeTrimmedString(job.name) !== desired.name) patch.name = desired.name;
@@ -158,15 +168,15 @@ function buildManagedDreamingPatch(
   ) {
     patch.schedule = schedule;
   }
-  if (normalizeTrimmedString(job.sessionTarget)?.toLowerCase() !== "main") {
-    patch.sessionTarget = "main";
-  }
+  const desiredTarget = normalizeTrimmedString(desired.sessionTarget)?.toLowerCase();
+  const currentTarget = normalizeTrimmedString(job.sessionTarget)?.toLowerCase();
+  if (currentTarget !== desiredTarget) patch.sessionTarget = desired.sessionTarget;
   if (normalizeTrimmedString(job.wakeMode)?.toLowerCase() !== "now") {
     patch.wakeMode = "now";
   }
   const payloadKind = normalizeTrimmedString(job.payload?.kind)?.toLowerCase();
-  const payloadText = normalizeTrimmedString(job.payload?.text);
-  if (payloadKind !== "systemevent" || payloadText !== payload.text) {
+  const payloadText = normalizeTrimmedString(job.payload?.text ?? job.payload?.message);
+  if (payloadKind !== "agentturn" || payloadText !== payload.message) {
     patch.payload = payload;
   }
   if (job.delivery !== undefined) patch.delivery = undefined;
@@ -363,12 +373,11 @@ export function buildManagedDailyReportCronJob(config: DreamingConfig): Omit<Cro
       expr,
       ...(tz ? { tz } : {}),
     },
-    // systemEvent requires main; channel delivery is done in-plugin (see daily-report/deliver.ts).
-    sessionTarget: "main" as const,
+    sessionTarget: "isolated" as const,
     wakeMode: "now" as const,
     payload: {
-      kind: "systemEvent" as const,
-      text: DAILY_REPORT_TRIGGER_TOKEN,
+      kind: "agentTurn" as const,
+      message: DAILY_REPORT_TRIGGER_TOKEN,
     },
   };
 }
@@ -376,7 +385,7 @@ export function buildManagedDailyReportCronJob(config: DreamingConfig): Omit<Cro
 function isManagedDailyReportJob(job: CronJob): boolean {
   if (normalizeTrimmedString(job.description)?.includes(MANAGED_DAILY_REPORT_CRON_TAG)) return true;
   const name = normalizeTrimmedString(job.name);
-  const payloadText = normalizeTrimmedString(job.payload?.text);
+  const payloadText = normalizeTrimmedString(job.payload?.text ?? job.payload?.message);
   return name === MANAGED_DAILY_REPORT_CRON_NAME && payloadText === DAILY_REPORT_TRIGGER_TOKEN;
 }
 
@@ -407,8 +416,8 @@ function buildManagedDailyReportPatch(
     patch.wakeMode = "now";
   }
   const payloadKind = normalizeTrimmedString(job.payload?.kind)?.toLowerCase();
-  const payloadText = normalizeTrimmedString(job.payload?.text);
-  if (payloadKind !== "systemevent" || payloadText !== desired.payload?.text) {
+  const payloadText = normalizeTrimmedString(job.payload?.text ?? job.payload?.message);
+  if (payloadKind !== "agentturn" || payloadText !== desired.payload?.message) {
     patch.payload = desired.payload;
   }
   if (job.delivery !== undefined) patch.delivery = undefined;

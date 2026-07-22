@@ -13,11 +13,11 @@ export function buildManagedDreamingCronJob(config) {
             expr: config.cron,
             ...(config.timezone ? { tz: config.timezone } : {}),
         },
-        sessionTarget: "main",
+        sessionTarget: "isolated",
         wakeMode: "now",
         payload: {
-            kind: "systemEvent",
-            text: DREAMING_TRIGGER_TOKEN,
+            kind: "agentTurn",
+            message: DREAMING_TRIGGER_TOKEN,
         },
     };
 }
@@ -25,7 +25,7 @@ function isManagedDreamingJob(job) {
     if (normalizeTrimmedString(job.description)?.includes(MANAGED_DREAMING_CRON_TAG))
         return true;
     const name = normalizeTrimmedString(job.name);
-    const payloadText = normalizeTrimmedString(job.payload?.text);
+    const payloadText = normalizeTrimmedString(job.payload?.text ?? job.payload?.message);
     return name === MANAGED_DREAMING_CRON_NAME && payloadText === DREAMING_TRIGGER_TOKEN;
 }
 /** Legacy crons that conflict with plugin-managed dreaming schedules. */
@@ -76,7 +76,7 @@ function sortManagedJobs(managed) {
 function buildManagedDreamingPatch(job, desired) {
     const schedule = desired.schedule;
     const payload = desired.payload;
-    if (!schedule?.expr || !payload?.text)
+    if (!schedule?.expr || !payload?.message)
         return null;
     const patch = {};
     if (normalizeTrimmedString(job.name) !== desired.name)
@@ -94,15 +94,16 @@ function buildManagedDreamingPatch(job, desired) {
         scheduleTz !== (schedule.tz ?? undefined)) {
         patch.schedule = schedule;
     }
-    if (normalizeTrimmedString(job.sessionTarget)?.toLowerCase() !== "main") {
-        patch.sessionTarget = "main";
-    }
+    const desiredTarget = normalizeTrimmedString(desired.sessionTarget)?.toLowerCase();
+    const currentTarget = normalizeTrimmedString(job.sessionTarget)?.toLowerCase();
+    if (currentTarget !== desiredTarget)
+        patch.sessionTarget = desired.sessionTarget;
     if (normalizeTrimmedString(job.wakeMode)?.toLowerCase() !== "now") {
         patch.wakeMode = "now";
     }
     const payloadKind = normalizeTrimmedString(job.payload?.kind)?.toLowerCase();
-    const payloadText = normalizeTrimmedString(job.payload?.text);
-    if (payloadKind !== "systemevent" || payloadText !== payload.text) {
+    const payloadText = normalizeTrimmedString(job.payload?.text ?? job.payload?.message);
+    if (payloadKind !== "agentturn" || payloadText !== payload.message) {
         patch.payload = payload;
     }
     if (job.delivery !== undefined)
@@ -258,12 +259,11 @@ export function buildManagedDailyReportCronJob(config) {
             expr,
             ...(tz ? { tz } : {}),
         },
-        // systemEvent requires main; channel delivery is done in-plugin (see daily-report/deliver.ts).
-        sessionTarget: "main",
+        sessionTarget: "isolated",
         wakeMode: "now",
         payload: {
-            kind: "systemEvent",
-            text: DAILY_REPORT_TRIGGER_TOKEN,
+            kind: "agentTurn",
+            message: DAILY_REPORT_TRIGGER_TOKEN,
         },
     };
 }
@@ -271,7 +271,7 @@ function isManagedDailyReportJob(job) {
     if (normalizeTrimmedString(job.description)?.includes(MANAGED_DAILY_REPORT_CRON_TAG))
         return true;
     const name = normalizeTrimmedString(job.name);
-    const payloadText = normalizeTrimmedString(job.payload?.text);
+    const payloadText = normalizeTrimmedString(job.payload?.text ?? job.payload?.message);
     return name === MANAGED_DAILY_REPORT_CRON_NAME && payloadText === DAILY_REPORT_TRIGGER_TOKEN;
 }
 function buildManagedDailyReportPatch(job, desired) {
@@ -299,8 +299,8 @@ function buildManagedDailyReportPatch(job, desired) {
         patch.wakeMode = "now";
     }
     const payloadKind = normalizeTrimmedString(job.payload?.kind)?.toLowerCase();
-    const payloadText = normalizeTrimmedString(job.payload?.text);
-    if (payloadKind !== "systemevent" || payloadText !== desired.payload?.text) {
+    const payloadText = normalizeTrimmedString(job.payload?.text ?? job.payload?.message);
+    if (payloadKind !== "agentturn" || payloadText !== desired.payload?.message) {
         patch.payload = desired.payload;
     }
     if (job.delivery !== undefined)
