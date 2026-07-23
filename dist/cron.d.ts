@@ -67,6 +67,9 @@ export declare function buildManagedDreamingCronJob(config: DreamingConfig): {
         kind: "agentTurn";
         message: string;
     };
+    delivery: {
+        mode: "none";
+    };
 };
 /** Legacy crons that conflict with plugin-managed dreaming schedules. */
 export declare function isLegacyConflictCronJob(job: CronJob): boolean;

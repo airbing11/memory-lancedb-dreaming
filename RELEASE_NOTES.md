@@ -1,7 +1,7 @@
-# memory-lancedb-dreaming v0.3.11 — 发布说明
+# memory-lancedb-dreaming v0.3.12 — 发布说明
 
 > **日期：** 2026-07-22
-> **安装包：** `memory-lancedb-dreaming-0.3.11.tgz`
+> **安装包：** `memory-lancedb-dreaming-0.3.12.tgz`
 
 ---
 
@@ -14,6 +14,14 @@ Dreaming 插件：Light → REM → Deep 三阶段梦境循环 + 叙事日记 + 
 - **Deep：** 从 LanceDB 选出高分记忆 promoted 到 `MEMORY.md`
 - **Narrative：** 每日梦境的自然语言叙事
 - **Daily Report：** 零 LLM 的日报摘要 + 可选 IM 推送（飞书/企微等）
+
+## v0.3.12 本次修复
+
+- 主 Dreaming 与 Daily Report cron 都显式设置 `delivery: { "mode": "none" }`
+- 避免 isolated agentTurn 完成后在多通道环境尝试 announce，导致任务被错误标记为 `error`
+- 自动迁移 0.3.11 已有 cron，无需手工删除重建
+- `delivery:none` 不影响插件自己的 `dailyReport.delivery`，飞书日报继续正常推送
+- 预期验收：两条 cron `lastRunStatus=ok`，`lastDeliveryStatus=not-requested`
 
 ---
 
@@ -80,17 +88,19 @@ Dreaming 插件：Light → REM → Deep 三阶段梦境循环 + 叙事日记 + 
 
 1. 已使用本地 `.tgz` 完成 OpenClaw 2026.7.1 实机验收
 2. 从真实 Git checkout 生成 npm ClawPack
-3. GitHub Release 与 ClawHub 绑定同一 `v0.3.11` commit
+3. GitHub Release 与 ClawHub 绑定同一 `v0.3.12` commit
 4. ClawPack 仅含 46 个生产文件
-5. 发布前 63/63 单测、生产依赖审计和 Plugin Inspector 全部通过
+5. 发布前 64/64 单测、生产依赖审计和 Plugin Inspector 全部通过
 
 ---
 
 ## OpenClaw 实机验收结果
 
-- `dreaming_status.version=0.3.11`
+- `dreaming_status.version=0.3.12`
 - `dreaming_doctor` 7/7 通过，LanceDB provider 为 `memory-lancedb-pro`
-- Dreaming 与 Daily Report 两条 cron 均为 `isolated` + `agentTurn`
+- 两条 cron 均为 `isolated + agentTurn + delivery:none`
 - 手动 `phase=all`：Light=100、REM=200、Narrative=true，三阶段完成
-- Daily Report `pushOn=changed` 去重正常，飞书私聊实测送达
-- Gateway 无插件错误，`consecutiveErrors=0`
+- 主 Dreaming 与 Daily Report 均为 `lastRunStatus=ok`
+- 两条 cron 均为 `lastDeliveryStatus=not-requested`、`consecutiveErrors=0`
+- 多通道 `Channel is required` 错误消失
+- Daily Report `pushOn=changed` 正常，飞书私聊实测送达

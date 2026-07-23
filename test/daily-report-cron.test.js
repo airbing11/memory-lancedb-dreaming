@@ -44,21 +44,21 @@ function configWithDelivery() {
   };
 }
 
-describe("managed cron jobs (isolated sessions without cron.delivery)", () => {
-  it("daily report cron uses isolated + agentTurn without delivery field", () => {
+describe("managed cron jobs (isolated sessions with completion delivery disabled)", () => {
+  it("daily report cron uses isolated + agentTurn + delivery:none", () => {
     const job = buildManagedDailyReportCronJob(configWithDelivery());
     assert.equal(job.sessionTarget, "isolated");
     assert.equal(job.payload?.kind, "agentTurn");
     assert.equal(job.payload?.message, DAILY_REPORT_TRIGGER_TOKEN);
-    assert.equal(job.delivery, undefined);
+    assert.deepEqual(job.delivery, { mode: "none" });
   });
 
-  it("dreaming cron uses isolated + agentTurn without delivery field", () => {
+  it("dreaming cron uses isolated + agentTurn + delivery:none", () => {
     const job = buildManagedDreamingCronJob(configWithDelivery());
     assert.equal(job.sessionTarget, "isolated");
     assert.equal(job.payload?.kind, "agentTurn");
     assert.equal(job.payload?.message, DREAMING_TRIGGER_TOKEN);
-    assert.equal(job.delivery, undefined);
+    assert.deepEqual(job.delivery, { mode: "none" });
   });
 
   it("staggers daily report cron when it collides with dreaming cron", () => {
@@ -81,6 +81,7 @@ describe("managed cron jobs (isolated sessions without cron.delivery)", () => {
         sessionTarget: "main",
         wakeMode: "now",
         payload: { kind: "systemEvent", text: DREAMING_TRIGGER_TOKEN },
+        delivery: { mode: "announce", channel: "wecom", to: "legacy-target" },
       },
       {
         id: "report",
@@ -122,10 +123,38 @@ describe("managed cron jobs (isolated sessions without cron.delivery)", () => {
       kind: "agentTurn",
       message: DREAMING_TRIGGER_TOKEN,
     });
+    assert.deepEqual(updates.get("dream").delivery, { mode: "none" });
     assert.equal(updates.get("report").sessionTarget, "isolated");
     assert.deepEqual(updates.get("report").payload, {
       kind: "agentTurn",
       message: DAILY_REPORT_TRIGGER_TOKEN,
     });
+    assert.deepEqual(updates.get("report").delivery, { mode: "none" });
+  });
+
+  it("leaves already-canonical delivery:none jobs unchanged", async () => {
+    const config = configWithDelivery();
+    const jobs = [
+      { id: "dream", ...buildManagedDreamingCronJob(config) },
+      { id: "report", ...buildManagedDailyReportCronJob(config) },
+    ];
+    const cron = {
+      async list() {
+        return jobs;
+      },
+      async add() {
+        throw new Error("unexpected add");
+      },
+      async update() {
+        throw new Error("unexpected update");
+      },
+      async remove() {
+        return { removed: false };
+      },
+    };
+    const logger = { info() {}, warn() {}, error() {} };
+
+    const result = await reconcileManagedDreamingCron({ cron, config, logger });
+    assert.equal(result.status, "noop");
   });
 });

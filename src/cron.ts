@@ -79,6 +79,9 @@ export function buildManagedDreamingCronJob(config: DreamingConfig) {
       kind: "agentTurn" as const,
       message: DREAMING_TRIGGER_TOKEN,
     },
+    delivery: {
+      mode: "none" as const,
+    },
   };
 }
 
@@ -181,7 +184,15 @@ function buildManagedDreamingPatch(
   if (payloadKind !== "agentturn" || payloadText !== payload.message) {
     patch.payload = payload;
   }
-  if (job.delivery !== undefined) patch.delivery = undefined;
+  if (
+    normalizeTrimmedString(job.delivery?.mode)?.toLowerCase() !== "none" ||
+    job.delivery?.channel !== undefined ||
+    job.delivery?.to !== undefined ||
+    job.delivery?.threadId !== undefined ||
+    job.delivery?.accountId !== undefined
+  ) {
+    patch.delivery = desired.delivery;
+  }
   return Object.keys(patch).length > 0 ? patch : null;
 }
 
@@ -381,6 +392,9 @@ export function buildManagedDailyReportCronJob(config: DreamingConfig): Omit<Cro
       kind: "agentTurn" as const,
       message: DAILY_REPORT_TRIGGER_TOKEN,
     },
+    delivery: {
+      mode: "none" as const,
+    },
   };
 }
 
@@ -422,7 +436,15 @@ function buildManagedDailyReportPatch(
   if (payloadKind !== "agentturn" || payloadText !== desired.payload?.message) {
     patch.payload = desired.payload;
   }
-  if (job.delivery !== undefined) patch.delivery = undefined;
+  if (
+    normalizeTrimmedString(job.delivery?.mode)?.toLowerCase() !== "none" ||
+    job.delivery?.channel !== undefined ||
+    job.delivery?.to !== undefined ||
+    job.delivery?.threadId !== undefined ||
+    job.delivery?.accountId !== undefined
+  ) {
+    patch.delivery = desired.delivery;
+  }
   return Object.keys(patch).length > 0 ? patch : null;
 }
 

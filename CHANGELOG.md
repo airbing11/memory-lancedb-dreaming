@@ -1,5 +1,13 @@
 # Changelog
 
+## [0.3.12] - 2026-07-23
+### Fixed
+- set both managed isolated cron jobs to `delivery.mode=none`
+- prevent OpenClaw from trying to announce cron completion without a channel in multi-channel environments
+- migrate existing managed cron jobs from missing/announce delivery to canonical `delivery: { mode: "none" }`
+- keep plugin-owned `dailyReport.delivery` unchanged, so Feishu/WeCom report push continues normally
+- add migration and idempotence coverage for the corrected cron delivery policy
+
 ## [0.3.11] - 2026-07-22
 ### Fixed
 - synchronize `package.json`, `openclaw.plugin.json`, runtime `PLUGIN_VERSION`, lockfile, docs, and install examples

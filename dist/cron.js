@@ -19,6 +19,9 @@ export function buildManagedDreamingCronJob(config) {
             kind: "agentTurn",
             message: DREAMING_TRIGGER_TOKEN,
         },
+        delivery: {
+            mode: "none",
+        },
     };
 }
 function isManagedDreamingJob(job) {
@@ -109,8 +112,13 @@ function buildManagedDreamingPatch(job, desired) {
     if (payloadKind !== "agentturn" || payloadText !== payload.message) {
         patch.payload = payload;
     }
-    if (job.delivery !== undefined)
-        patch.delivery = undefined;
+    if (normalizeTrimmedString(job.delivery?.mode)?.toLowerCase() !== "none" ||
+        job.delivery?.channel !== undefined ||
+        job.delivery?.to !== undefined ||
+        job.delivery?.threadId !== undefined ||
+        job.delivery?.accountId !== undefined) {
+        patch.delivery = desired.delivery;
+    }
     return Object.keys(patch).length > 0 ? patch : null;
 }
 export async function reconcileManagedDreamingCron(params) {
@@ -268,6 +276,9 @@ export function buildManagedDailyReportCronJob(config) {
             kind: "agentTurn",
             message: DAILY_REPORT_TRIGGER_TOKEN,
         },
+        delivery: {
+            mode: "none",
+        },
     };
 }
 function isManagedDailyReportJob(job) {
@@ -306,8 +317,13 @@ function buildManagedDailyReportPatch(job, desired) {
     if (payloadKind !== "agentturn" || payloadText !== desired.payload?.message) {
         patch.payload = desired.payload;
     }
-    if (job.delivery !== undefined)
-        patch.delivery = undefined;
+    if (normalizeTrimmedString(job.delivery?.mode)?.toLowerCase() !== "none" ||
+        job.delivery?.channel !== undefined ||
+        job.delivery?.to !== undefined ||
+        job.delivery?.threadId !== undefined ||
+        job.delivery?.accountId !== undefined) {
+        patch.delivery = desired.delivery;
+    }
     return Object.keys(patch).length > 0 ? patch : null;
 }
 export function resolveCronServiceFromCandidate(candidate) {
