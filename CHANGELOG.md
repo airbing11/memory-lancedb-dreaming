@@ -1,5 +1,9 @@
 # Changelog
 
+## [0.3.14] - 2026-08-04
+### Fixed
+- restore ClawHub / manifest display name to `Memory LanceDB Dreaming` (0.3.13 accidentally published as `Dreaming (LanceDB)`)
+
 ## [0.3.13] - 2026-08-04
 ### Fixed
 - migrate daily-report delivery from removed `openclaw/plugin-sdk/channel-message-runtime` to `openclaw/plugin-sdk/channel-outbound`

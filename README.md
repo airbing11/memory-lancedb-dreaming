@@ -434,7 +434,7 @@ MIT © 2026 airbing11
 
 ## 版本与变更
 
-- 当前版本：**0.3.13**（ClawHub validate 兼容：`channel-outbound` + 移除顶层 `uiHints`）
+- 当前版本：**0.3.14**（恢复展示名 Memory LanceDB Dreaming；含 0.3.13 ClawHub validate 兼容修复）
 - 页面版式基线：**0.2.7**（README 英文在前 + `## 中文说明`）
 - 变更记录：[CHANGELOG.md](./CHANGELOG.md)
 - 验收报告：[docs/v0.3.13-OPENCLAW-TEST-STEPS.md](./docs/v0.3.13-OPENCLAW-TEST-STEPS.md)

@@ -1,5 +1,5 @@
 export const DREAMING_TRIGGER_TOKEN = "__openclaw_memory_lancedb_dreaming_trigger__";
-export const PLUGIN_VERSION = "0.3.13";
+export const PLUGIN_VERSION = "0.3.14";
 export const DAILY_REPORT_TRIGGER_TOKEN = "__openclaw_memory_lancedb_dreaming_daily_report__";
 export const MANAGED_DREAMING_CRON_NAME = "LanceDB Memory Dreaming";
 export const MANAGED_DAILY_REPORT_CRON_NAME = "Dreaming Daily Report";
