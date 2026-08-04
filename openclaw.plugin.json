@@ -2,7 +2,7 @@
   "id": "memory-lancedb-dreaming",
   "name": "Dreaming (LanceDB)",
   "description": "Light/REM/Deep dreaming for memory-lancedb: isolated session cron, narrative DREAMS.md, promotion, and daily report (zero-LLM file summary + optional push to Feishu/WeCom/etc. via dailyReport.delivery).",
-  "version": "0.3.12",
+  "version": "0.3.13",
   "activation": {
     "onStartup": true
   },
@@ -107,7 +107,7 @@
           },
           "model": {
             "type": "string",
-            "description": "Model override for REM semantic theme naming (alias: rem.execution.model)"
+            "description": "Model override for REM semantic theme naming (alias: rem.execution.model). Requires plugins.entries.memory-lancedb-dreaming.subagent.allowModelOverride=true and hooks.allowConversationAccess=true."
           },
           "execution": {
             "type": "object",
@@ -184,7 +184,7 @@
           },
           "model": {
             "type": "string",
-            "description": "Model override for narrative generation (falls back to rem.model)"
+            "description": "Model override for narrative generation (falls back to rem.model). Requires subagent.allowModelOverride=true."
           },
           "execution": {
             "type": "object",
@@ -271,56 +271,6 @@
           }
         }
       }
-    }
-  },
-  "uiHints": {
-    "enabled": {
-      "label": "Enable Dreaming",
-      "help": "Turn on automatic memory dreaming (Light/REM/Deep phases)"
-    },
-    "cron": {
-      "label": "Cron Schedule",
-      "help": "Cron expression for deep dreaming (e.g. '0 3 * * *' for 3am daily)",
-      "placeholder": "0 3 * * *"
-    },
-    "timezone": {
-      "label": "Timezone",
-      "help": "IANA timezone for scheduling"
-    },
-    "autoManageCron": {
-      "label": "Auto-Manage Cron",
-      "help": "Let the plugin create and update its cron job automatically"
-    },
-    "rem.model": {
-      "label": "REM Theme Model",
-      "placeholder": "deepseek/deepseek-v4-flash",
-      "help": "Provider/model for REM semantic theme naming. Requires plugins.entries.memory-lancedb-dreaming.subagent.allowModelOverride=true and hooks.allowConversationAccess=true."
-    },
-    "dailyReport.enabled": {
-      "label": "Daily Report",
-      "help": "Publish a zero-LLM daily summary to memory/YYYY-MM-DD.md after dreaming (default: on). Set enabled=false to disable."
-    },
-    "dailyReport.cron": {
-      "label": "Daily Report Cron",
-      "placeholder": "0 4 * * *",
-      "help": "Cron for daily report refresh/delivery (default: 4am, after dreaming cron)"
-    },
-    "dailyReport.delivery.channel": {
-      "label": "Daily Report Channel",
-      "help": "Optional OpenClaw channel for announce delivery (e.g. feishu, telegram)"
-    },
-    "dailyReport.delivery.to": {
-      "label": "Daily Report Target",
-      "help": "Delivery target for the configured channel"
-    },
-    "dailyReport.delivery.pushOn": {
-      "label": "Daily Report Push Policy",
-      "help": "changed (default): skip IM push when report content is unchanged; always: push every run"
-    },
-    "narrative.model": {
-      "label": "Narrative Model",
-      "placeholder": "deepseek/deepseek-v4-flash",
-      "help": "Provider/model for dream diary narrative. Falls back to rem.model. Requires subagent.allowModelOverride=true."
     }
   }
 }

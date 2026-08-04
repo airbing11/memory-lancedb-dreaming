@@ -1,4 +1,4 @@
-import { sendDurableMessageBatch, } from "openclaw/plugin-sdk/channel-message-runtime";
+import { sendDurableMessageBatch, } from "openclaw/plugin-sdk/channel-outbound";
 function describeSendFailure(send) {
     if (send.status === "failed" || send.status === "partial_failed") {
         return send.error instanceof Error ? send.error.message : String(send.error);

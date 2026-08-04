@@ -66,7 +66,7 @@ You do not have to switch back to `memory-core` just to keep dreaming.
 
 | Item | Notes |
 |------|-------|
-| Supported OpenClaw | 2026.6.9+ (security baseline); v0.3.12 verified on 2026.7.1 |
+| Supported OpenClaw | 2026.6.9+ (security baseline); v0.3.13 validated against 2026.7.2-beta.7 |
 | Third-party slot sidecar | Before 6.5/6.6, managed cron could show `ok` with no artifacts (#92536); fixed in #93678. Fallback: add `memory-core` to `plugins.allow` with `enabled: false` |
 | Install | Prefer ClawHub: `openclaw plugins install clawhub:memory-lancedb-dreaming`; offline: `scripts/install.sh` |
 | Troubleshooting | Run `dreaming_doctor` / `scripts/doctor.sh` first |
@@ -108,7 +108,7 @@ You do not have to switch back to `memory-core` just to keep dreaming.
 
 | 项 | 说明 |
 |----|------|
-| 支持的 OpenClaw | 2026.6.9+（安全基线）；v0.3.12 已在 2026.7.1 实机验证 |
+| 支持的 OpenClaw | 2026.6.9+（安全基线）；v0.3.13 已对 2026.7.2-beta.7 过 ClawHub validate |
 | 第三方插槽 dreaming sidecar | 6.5/6.6 之前 managed cron 可能显示 `ok` 但无产物（#92536）；已由 #93678 修复 |
 | 安装方式 | 优先 ClawHub：`openclaw plugins install clawhub:memory-lancedb-dreaming`；离线 `scripts/install.sh` |
 | 排障第一步 | 先跑 `dreaming_doctor` / `scripts/doctor.sh`，再开 issue |
@@ -132,6 +132,12 @@ OpenClaw 对 cron 完成文本的额外 announce，避免多通道环境报
 `Channel is required when multiple channels are configured`；插件自己的
 `dailyReport.delivery`（飞书/企微等）不受影响。
 
+### v0.3.13 ClawHub 兼容性修复
+
+- 日报推送改用 `openclaw/plugin-sdk/channel-outbound`（`channel-message-runtime` 在新宿主已移除）
+- 移除 `openclaw.plugin.json` 顶层 `uiHints`，消除 ClawHub `manifest-unknown-fields` 告警
+- 对 OpenClaw `2026.7.2-beta.7` 本地 `clawhub package validate`：0 error / 0 warning
+
 ### 为什么需要这个插件
 
 OpenClaw **同一时间只启用一个 memory 插槽**。Dreaming 配置可以跟随 slot owner，但是否对 LanceDB 向量执行完整 Light / REM / Deep 取决于该 provider。本插件提供独立的 LanceDB 向量管线与可读日报层。
@@ -154,7 +160,7 @@ OpenClaw **同一时间只启用一个 memory 插槽**。Dreaming 配置可以�
 
 ## 安装
 
-> v0.3.12 的最低安全基线是 **OpenClaw 2026.6.9**；已在 **2026.7.1** 实机验证。
+> v0.3.13 的最低安全基线是 **OpenClaw 2026.6.9**；已对 **2026.7.2-beta.7** 跑通 ClawHub validate。
 
 ### 方式 A：ClawHub（推荐）
 
@@ -165,14 +171,14 @@ openclaw plugins install clawhub:memory-lancedb-dreaming
 ### 方式 B：安装脚本
 
 ```bash
-bash scripts/install.sh memory-lancedb-dreaming-0.3.12.tgz
+bash scripts/install.sh memory-lancedb-dreaming-0.3.13.tgz
 ```
 
 ### 方式 C：手动解压
 
 ```bash
 mkdir -p ~/.openclaw/plugins/memory-lancedb-dreaming
-tar -xzf memory-lancedb-dreaming-0.3.12.tgz -C /tmp
+tar -xzf memory-lancedb-dreaming-0.3.13.tgz -C /tmp
 cp -r /tmp/package/* ~/.openclaw/plugins/memory-lancedb-dreaming/
 cd ~/.openclaw/plugins/memory-lancedb-dreaming && npm install --omit=dev
 ```
@@ -348,10 +354,10 @@ ls ~/.openclaw/plugins/memory-lancedb-dreaming/dist/index.js
 grep -r "workspace/memory-lancedb-dreaming" ~/.openclaw --include="*.json" || echo "no stale workspace path"
 ```
 
-### 1. 安装 v0.3.12 并重启 gateway
+### 1. 安装 v0.3.13 并重启 gateway
 
 ```bash
-bash scripts/install.sh memory-lancedb-dreaming-0.3.12.tgz
+bash scripts/install.sh memory-lancedb-dreaming-0.3.13.tgz
 openclaw gateway stop 2>/dev/null || true
 openclaw gateway run
 ```
@@ -428,10 +434,10 @@ MIT © 2026 airbing11
 
 ## 版本与变更
 
-- 当前版本：**0.3.12**（补充 cron `delivery:none`，修复多通道完成投递误报）
+- 当前版本：**0.3.13**（ClawHub validate 兼容：`channel-outbound` + 移除顶层 `uiHints`）
 - 页面版式基线：**0.2.7**（README 英文在前 + `## 中文说明`）
 - 变更记录：[CHANGELOG.md](./CHANGELOG.md)
-- 验收报告：[docs/v0.2.8-OPENCLAW-TEST-STEPS.md](./docs/v0.2.8-OPENCLAW-TEST-STEPS.md)
+- 验收报告：[docs/v0.3.13-OPENCLAW-TEST-STEPS.md](./docs/v0.3.13-OPENCLAW-TEST-STEPS.md)
 
 ## 发布渠道
 

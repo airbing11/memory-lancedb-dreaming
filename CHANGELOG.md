@@ -1,5 +1,11 @@
 # Changelog
 
+## [0.3.13] - 2026-08-04
+### Fixed
+- migrate daily-report delivery from removed `openclaw/plugin-sdk/channel-message-runtime` to `openclaw/plugin-sdk/channel-outbound`
+- remove top-level `uiHints` from `openclaw.plugin.json` so ClawHub Plugin Inspector against OpenClaw 2026.7.2-beta.7 no longer flags `manifest-unknown-fields` (fold critical help into `configSchema` descriptions)
+- rebuild / validate against OpenClaw `2026.7.2-beta.7`
+
 ## [0.3.12] - 2026-07-23
 ### Fixed
 - set both managed isolated cron jobs to `delivery.mode=none`

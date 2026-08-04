@@ -1,7 +1,7 @@
 import {
   sendDurableMessageBatch,
   type DurableMessageBatchSendResult,
-} from "openclaw/plugin-sdk/channel-message-runtime";
+} from "openclaw/plugin-sdk/channel-outbound";
 import type { OpenClawPluginApi } from "openclaw/plugin-sdk/plugin-entry";
 import type { DailyReportDelivery } from "../config.js";
 import type { PluginLogger } from "../cron.js";
