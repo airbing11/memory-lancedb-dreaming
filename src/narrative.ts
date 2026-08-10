@@ -4,8 +4,14 @@ import path from "node:path";
 import type { NarrativeConfig, NarrativeLanguage } from "./config.js";
 import type { PluginLogger } from "./cron.js";
 import { runDreamingTextPrompt } from "./llm-subagent.js";
+import {
+  appendNarrativeHistoryRun,
+  filterNovelNarrativeSnippets,
+  isNarrativeOutputRepeated,
+  readNarrativeHistory,
+} from "./narrative-history.js";
 import type { LlmCompleteFn, SubagentRuntime } from "./types.js";
-import { atomicWriteTextFile, createAsyncLock } from "./utils.js";
+import { atomicWriteTextFile, createAsyncLock, formatDreamingDay } from "./utils.js";
 
 const NARRATIVE_EN_SYSTEM_PROMPT = [
   "You are keeping a dream diary. Write a single entry in first person.",
@@ -224,6 +230,31 @@ export async function generateAndAppendDreamNarrative(params: {
     return false;
   }
 
+  const day = formatDreamingDay(params.nowMs, params.timezone);
+  const history = await readNarrativeHistory(params.workspaceDir);
+  let sourceSnippets = params.snippets;
+  if (params.mode === "snapshot") {
+    const novelty = filterNovelNarrativeSnippets({
+      snippets: params.snippets,
+      history,
+      nowMs: params.nowMs,
+      windowDays: params.config.sourceCooldownDays,
+      similarityThreshold: params.config.sourceSimilarityThreshold,
+    });
+    sourceSnippets = novelty.selected;
+    if (novelty.skipped > 0) {
+      params.logger.info(
+        `memory-lancedb-dreaming: narrative filtered ${novelty.skipped} recently used source snippet(s)`
+      );
+    }
+    if (sourceSnippets.length < params.config.minNovelSnippets) {
+      params.logger.info(
+        `memory-lancedb-dreaming: snapshot narrative skipped (${sourceSnippets.length} novel snippet(s) < ${params.config.minNovelSnippets})`
+      );
+      return false;
+    }
+  }
+
   const languages = resolveLanguages(params.config);
   const sections: string[] = [];
 
@@ -236,7 +267,7 @@ export async function generateAndAppendDreamNarrative(params: {
     const message = buildNarrativePrompt({
       language,
       mode: params.mode,
-      snippets: params.snippets,
+      snippets: sourceSnippets,
       promotions: params.promotions,
       themes: params.themes,
     });
@@ -259,6 +290,25 @@ export async function generateAndAppendDreamNarrative(params: {
   }
 
   const combined = sections.join("\n\n");
+  const repeatedOutput = isNarrativeOutputRepeated({
+    narrativeText: combined,
+    history,
+    nowMs: params.nowMs,
+    windowDays: params.config.outputDedupeWindowDays,
+    similarityThreshold: params.config.outputSimilarityThreshold,
+  });
+  await appendNarrativeHistoryRun({
+    workspaceDir: params.workspaceDir,
+    day,
+    sourceSnippets,
+    narrativeText: combined,
+  });
+  if (repeatedOutput) {
+    params.logger.info(
+      "memory-lancedb-dreaming: generated narrative skipped as a reworded recent entry"
+    );
+    return false;
+  }
   await appendNarrativeEntry({
     workspaceDir: params.workspaceDir,
     narrative: combined,

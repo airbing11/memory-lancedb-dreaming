@@ -9,6 +9,7 @@ import { pickClusterSpotlightMemories, selectLastingTruths } from "../rem-divers
 import {
   appendRemHistoryRun,
   collectRecentRemMemoryIds,
+  collectRecentRemThemeNames,
   collectRecentRemTruthTexts,
   readRemHistory,
 } from "../rem-history.js";
@@ -17,6 +18,7 @@ import {
   buildTagClusters,
   formatRemReflectionLines,
   nameRemClusters,
+  suppressRepeatedRemThemes,
   type RemCluster,
 } from "./rem-themes.js";
 
@@ -69,7 +71,6 @@ export async function runRemSleep(params: {
     timezone: params.timezone,
     cooldownDays: params.config.lastingTruthCooldownDays,
     field: "lastingTruthIds",
-    excludeDay: reportDay,
   });
   const recentSpotlightIds = collectRecentRemMemoryIds({
     history: remHistory,
@@ -77,14 +78,17 @@ export async function runRemSleep(params: {
     timezone: params.timezone,
     cooldownDays: params.config.clusterSpotlightCooldownDays,
     field: "clusterSpotlightIds",
-    excludeDay: reportDay,
   });
 
   const recentTruthTexts = collectRecentRemTruthTexts({
     history: remHistory,
     nowMs: params.nowMs,
     windowDays: params.config.truthDedupeWindowDays,
-    excludeDay: reportDay,
+  });
+  const recentThemeNames = collectRecentRemThemeNames({
+    history: remHistory,
+    nowMs: params.nowMs,
+    windowDays: params.config.themeCooldownDays,
   });
 
   const promotedMemoryIds = new Set(
@@ -98,7 +102,7 @@ export async function runRemSleep(params: {
   const noveltyMode = params.noveltyMode === true;
   const excludePromoted = params.config.excludePromoted || noveltyMode;
   const truthSimilarityThreshold = noveltyMode
-    ? Math.min(params.config.truthSimilarityThreshold, 0.7)
+    ? Math.max(0.2, params.config.truthSimilarityThreshold - 0.1)
     : params.config.truthSimilarityThreshold;
 
   const truthLimit = Math.min(3, params.config.limit);
@@ -122,6 +126,7 @@ export async function runRemSleep(params: {
     recentSpotlightIds,
     day: reportDay,
   });
+  const rawClusterCount = clusters.length;
 
   if (clusters.length === 0) {
     params.logger?.info(
@@ -151,6 +156,7 @@ export async function runRemSleep(params: {
         workspaceDir: params.workspaceDir,
         nowMs: params.nowMs,
         logger: params.logger,
+        recentThemeNames,
       });
     } else {
       params.logger?.warn(
@@ -163,13 +169,29 @@ export async function runRemSleep(params: {
     );
   }
 
+  const novelThemes = suppressRepeatedRemThemes({
+    clusters,
+    themeNames,
+    recentThemeNames,
+    similarityThreshold: params.config.themeSimilarityThreshold,
+  });
+  clusters = novelThemes.clusters;
+  themeNames = novelThemes.themeNames;
+  if (novelThemes.skipped > 0) {
+    params.logger?.info(
+      `memory-lancedb-dreaming: REM suppressed ${novelThemes.skipped} recently surfaced theme(s) (cooldown=${params.config.themeCooldownDays}d)`
+    );
+  }
+
   const reflections = formatRemReflectionLines(clusters, themeNames);
   const bodyLines = [
     "### Reflections",
     ...(clusters.length === 0
-      ? [
+      ? rawClusterCount > 0
+        ? ["- No novel REM themes surfaced; recent themes are cooling down."]
+        : [
           `- REM: no patterns found above threshold (minPatternStrength=${params.config.minPatternStrength}).`,
-        ]
+          ]
       : reflections),
     "",
     "### Possible Lasting Truths",

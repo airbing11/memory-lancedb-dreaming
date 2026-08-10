@@ -13,6 +13,8 @@ export declare const RemDreamingConfigSchema: Type.TObject<{
     minPatternStrength: Type.TNumber;
     lastingTruthCooldownDays: Type.TNumber;
     clusterSpotlightCooldownDays: Type.TNumber;
+    themeCooldownDays: Type.TNumber;
+    themeSimilarityThreshold: Type.TNumber;
     truthDedupeWindowDays: Type.TNumber;
     truthSimilarityThreshold: Type.TNumber;
     excludePromoted: Type.TBoolean;
@@ -56,6 +58,11 @@ export declare const DailyReportConfigSchema: Type.TObject<{
 export declare const NarrativeConfigSchema: Type.TObject<{
     enabled: Type.TBoolean;
     languages: Type.TArray<Type.TUnion<[Type.TLiteral<"zh">, Type.TLiteral<"en">]>>;
+    sourceCooldownDays: Type.TNumber;
+    sourceSimilarityThreshold: Type.TNumber;
+    minNovelSnippets: Type.TNumber;
+    outputDedupeWindowDays: Type.TNumber;
+    outputSimilarityThreshold: Type.TNumber;
     model: Type.TOptional<Type.TString>;
 }>;
 export declare const DreamingConfigSchema: Type.TObject<{
@@ -74,6 +81,8 @@ export declare const DreamingConfigSchema: Type.TObject<{
         minPatternStrength: Type.TNumber;
         lastingTruthCooldownDays: Type.TNumber;
         clusterSpotlightCooldownDays: Type.TNumber;
+        themeCooldownDays: Type.TNumber;
+        themeSimilarityThreshold: Type.TNumber;
         truthDedupeWindowDays: Type.TNumber;
         truthSimilarityThreshold: Type.TNumber;
         excludePromoted: Type.TBoolean;
@@ -94,6 +103,11 @@ export declare const DreamingConfigSchema: Type.TObject<{
     narrative: Type.TObject<{
         enabled: Type.TBoolean;
         languages: Type.TArray<Type.TUnion<[Type.TLiteral<"zh">, Type.TLiteral<"en">]>>;
+        sourceCooldownDays: Type.TNumber;
+        sourceSimilarityThreshold: Type.TNumber;
+        minNovelSnippets: Type.TNumber;
+        outputDedupeWindowDays: Type.TNumber;
+        outputSimilarityThreshold: Type.TNumber;
         model: Type.TOptional<Type.TString>;
     }>;
     dailyReport: Type.TObject<{

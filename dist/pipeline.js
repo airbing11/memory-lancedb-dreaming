@@ -121,7 +121,9 @@ export async function runDreamingPipeline(params) {
                     logger: params.logger,
                 });
             }
-            else if (lightCount > 0 && lightSnippets.length > 0) {
+            else if (lightCount > 0 &&
+                lightSnippets.length > 0 &&
+                (!phasesRan.rem || remThemes.length > 0)) {
                 narrativeWritten = await generateAndAppendDreamNarrative({
                     subagent,
                     llmComplete,
@@ -135,6 +137,9 @@ export async function runDreamingPipeline(params) {
                     timezone,
                     logger: params.logger,
                 });
+            }
+            else if (phasesRan.rem && remThemes.length === 0) {
+                params.logger.info("memory-lancedb-dreaming: snapshot narrative skipped (no novel REM themes)");
             }
         }
     }

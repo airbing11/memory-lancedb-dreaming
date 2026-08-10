@@ -40,7 +40,9 @@ function renderZh(snapshot) {
         "【关键发现】",
     ];
     if (snapshot.rem.themes.length === 0) {
-        lines.push("- 暂无 REM 主题（或未运行 REM 阶段）");
+        lines.push(snapshot.rem.ran
+            ? "- 暂无新的 REM 主题（近期主题已进入冷却）"
+            : "- 未运行 REM 阶段");
     }
     else {
         for (const theme of snapshot.rem.themes.slice(0, 8)) {
@@ -70,7 +72,9 @@ function renderEn(snapshot) {
         "[Key findings]",
     ];
     if (snapshot.rem.themes.length === 0) {
-        lines.push("- No REM themes (or REM did not run)");
+        lines.push(snapshot.rem.ran
+            ? "- No novel REM themes (recent themes are cooling down)"
+            : "- REM did not run");
     }
     else {
         for (const theme of snapshot.rem.themes.slice(0, 8)) {

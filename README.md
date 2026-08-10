@@ -10,6 +10,8 @@ OpenClaw has one active memory slot and can resolve dreaming settings from that 
 
 **v0.2.8** stops daily reports from recycling the same old material — text-level REM truth dedupe, exclude promoted memories, narrative freshness on zero-promotion days, idle novelty mode after Deep stalls, and `dreaming_doctor` install self-check.
 
+**v0.3.15** closes the remaining “same story, different wording” gap: REM theme cooldown, narrative source history, no long narrative without enough novel material, output similarity gating, and semantic push fingerprints.
+
 **v0.2.6** fixes duplicate daily report pushes, adds `pushOn: "changed"` delivery dedupe, auto-staggers colliding report cron schedules, and rotates REM Lasting Truths / cluster exemplars across days.
 
 **v0.2.4+** reads LanceDB `dbPath` / `embedding` from `plugins.slots.memory` (including `memory-lancedb-pro`).
@@ -43,6 +45,14 @@ Local files are still written for audit and retrieval:
 - **Self-check:** run `dreaming_doctor` or `bash scripts/doctor.sh` before opening an issue.
 - Restore old behavior: `rem.truthSimilarityThreshold: 1`, `rem.excludePromoted: false`, `deep.idleNoveltyAfterDays: 0`.
 
+**v0.3.15 cross-day anti-repeat:**
+
+- `rem.themeCooldownDays` (default 7) suppresses recently surfaced similar themes.
+- `narrative.sourceCooldownDays` (default 7) filters recently narrated Light snippets before the LLM call.
+- `narrative.minNovelSnippets` (default 2) skips zero-promotion prose when there is not enough new material.
+- `narrative.outputDedupeWindowDays` (default 14) rejects substantially repeated generated prose.
+- `pushOn: "changed"` ignores volatile counts, confidence, evidence summaries, and wording-only changes.
+
 ## Why This Plugin
 
 The plugin resolves a practical OpenClaw trade-off:
@@ -66,7 +76,7 @@ You do not have to switch back to `memory-core` just to keep dreaming.
 
 | Item | Notes |
 |------|-------|
-| Supported OpenClaw | 2026.6.9+ (security baseline); v0.3.13 validated against 2026.7.2-beta.7 |
+| Supported OpenClaw | 2026.6.9+ (security baseline); v0.3.16 validated against 2026.7.2-beta.7 |
 | Third-party slot sidecar | Before 6.5/6.6, managed cron could show `ok` with no artifacts (#92536); fixed in #93678. Fallback: add `memory-core` to `plugins.allow` with `enabled: false` |
 | Install | Prefer ClawHub: `openclaw plugins install clawhub:memory-lancedb-dreaming`; offline: `scripts/install.sh` |
 | Troubleshooting | Run `dreaming_doctor` / `scripts/doctor.sh` first |
@@ -80,6 +90,8 @@ You do not have to switch back to `memory-core` just to keep dreaming.
 **v0.3.x** 将梦境和日报 cron 改为独立 session 运行，不再污染主对话缓存，88%+ 前缀缓存命中率。
 
 **v0.2.8** 解决长期运行后日报「换措辞但素材重复」：REM 文本级去重、排除已提炼记忆、叙事新鲜度、Deep 空转 novelty 模式、`dreaming_doctor` 自检。
+
+**v0.3.15** 进一步解决「同一批主题和素材每天换说法」：主题跨日冷却、叙事素材历史、无足够新料不写长叙事、输出相似度拦截，以及忽略纯措辞变化的推送指纹。
 
 **v0.2.6** 已修复日报双推、IM 相似内容重复推送，并增加 REM Lasting Truths 与聚类 exemplar 的跨天轮换。
 
@@ -104,11 +116,19 @@ You do not have to switch back to `memory-core` just to keep dreaming.
 - **自检：** `dreaming_doctor` 或 `bash scripts/doctor.sh`。
 - 保留旧行为：`rem.truthSimilarityThreshold: 1` + `rem.excludePromoted: false` + `deep.idleNoveltyAfterDays: 0`。
 
+**v0.3.15 跨日反重复：**
+
+- `rem.themeCooldownDays`（默认 7）：近期出现过的相似主题不再进入「关键发现」。
+- `narrative.sourceCooldownDays`（默认 7）：Deep=0 时在 LLM 调用前过滤近期写过的 Light 素材。
+- `narrative.minNovelSnippets`（默认 2）：新素材不足时不生成长叙事。
+- `narrative.outputDedupeWindowDays`（默认 14）：生成结果与近期日记过于相似时不写入。
+- `pushOn: changed` 忽略候选数量、置信度和纯散文换词，只在主题/提升等语义信号变化时推送。
+
 ### 兼容性
 
 | 项 | 说明 |
 |----|------|
-| 支持的 OpenClaw | 2026.6.9+（安全基线）；v0.3.13 已对 2026.7.2-beta.7 过 ClawHub validate |
+| 支持的 OpenClaw | 2026.6.9+（安全基线）；v0.3.16 已对 2026.7.2-beta.7 过 ClawHub validate |
 | 第三方插槽 dreaming sidecar | 6.5/6.6 之前 managed cron 可能显示 `ok` 但无产物（#92536）；已由 #93678 修复 |
 | 安装方式 | 优先 ClawHub：`openclaw plugins install clawhub:memory-lancedb-dreaming`；离线 `scripts/install.sh` |
 | 排障第一步 | 先跑 `dreaming_doctor` / `scripts/doctor.sh`，再开 issue |
@@ -138,6 +158,18 @@ OpenClaw 对 cron 完成文本的额外 announce，避免多通道环境报
 - 移除 `openclaw.plugin.json` 顶层 `uiHints`，消除 ClawHub `manifest-unknown-fields` 告警
 - 对 OpenClaw `2026.7.2-beta.7` 本地 `clawhub package validate`：0 error / 0 warning
 
+### v0.3.15 日报跨日反重复
+
+- 近期相似 REM 主题进入 7 天冷却，不再反复占据「关键发现」
+- Deep=0 时先过滤近 7 天已叙述素材；不足 2 条新素材则不生成长叙事
+- 生成后的散文再与近 14 天日记比对，相似内容不写入
+- `pushOn: changed` 改用稳定语义指纹，纯换词和候选数波动不再重复推送
+
+### v0.3.16 REM 主题计数修正
+
+- REM 分析过记忆但没有产出新主题时，日报概要准确显示 `0 个主题模式`
+- 不再把 `remCount`（分析记忆数）错误兜底为 1 个主题
+
 ### 为什么需要这个插件
 
 OpenClaw **同一时间只启用一个 memory 插槽**。Dreaming 配置可以跟随 slot owner，但是否对 LanceDB 向量执行完整 Light / REM / Deep 取决于该 provider。本插件提供独立的 LanceDB 向量管线与可读日报层。
@@ -160,7 +192,7 @@ OpenClaw **同一时间只启用一个 memory 插槽**。Dreaming 配置可以�
 
 ## 安装
 
-> v0.3.13 的最低安全基线是 **OpenClaw 2026.6.9**；已对 **2026.7.2-beta.7** 跑通 ClawHub validate。
+> v0.3.16 的最低安全基线是 **OpenClaw 2026.6.9**；已对 **2026.7.2-beta.7** 跑通 ClawHub validate。
 
 ### 方式 A：ClawHub（推荐）
 
@@ -171,14 +203,14 @@ openclaw plugins install clawhub:memory-lancedb-dreaming
 ### 方式 B：安装脚本
 
 ```bash
-bash scripts/install.sh memory-lancedb-dreaming-0.3.13.tgz
+bash scripts/install.sh memory-lancedb-dreaming-0.3.16.tgz
 ```
 
 ### 方式 C：手动解压
 
 ```bash
 mkdir -p ~/.openclaw/plugins/memory-lancedb-dreaming
-tar -xzf memory-lancedb-dreaming-0.3.13.tgz -C /tmp
+tar -xzf memory-lancedb-dreaming-0.3.16.tgz -C /tmp
 cp -r /tmp/package/* ~/.openclaw/plugins/memory-lancedb-dreaming/
 cd ~/.openclaw/plugins/memory-lancedb-dreaming && npm install --omit=dev
 ```
@@ -354,10 +386,10 @@ ls ~/.openclaw/plugins/memory-lancedb-dreaming/dist/index.js
 grep -r "workspace/memory-lancedb-dreaming" ~/.openclaw --include="*.json" || echo "no stale workspace path"
 ```
 
-### 1. 安装 v0.3.13 并重启 gateway
+### 1. 安装 v0.3.16 并重启 gateway
 
 ```bash
-bash scripts/install.sh memory-lancedb-dreaming-0.3.13.tgz
+bash scripts/install.sh memory-lancedb-dreaming-0.3.16.tgz
 openclaw gateway stop 2>/dev/null || true
 openclaw gateway run
 ```
@@ -434,10 +466,10 @@ MIT © 2026 airbing11
 
 ## 版本与变更
 
-- 当前版本：**0.3.14**（恢复展示名 Memory LanceDB Dreaming；含 0.3.13 ClawHub validate 兼容修复）
+- 当前版本：**0.3.16**（含 0.3.15 四层跨日反重复与 REM 零主题计数修正）
 - 页面版式基线：**0.2.7**（README 英文在前 + `## 中文说明`）
 - 变更记录：[CHANGELOG.md](./CHANGELOG.md)
-- 验收报告：[docs/v0.3.13-OPENCLAW-TEST-STEPS.md](./docs/v0.3.13-OPENCLAW-TEST-STEPS.md)
+- 验收报告：[docs/v0.3.16-OPENCLAW-TEST-STEPS.md](./docs/v0.3.16-OPENCLAW-TEST-STEPS.md)
 
 ## 发布渠道
 

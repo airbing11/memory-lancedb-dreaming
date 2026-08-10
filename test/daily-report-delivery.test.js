@@ -36,11 +36,36 @@ describe("daily report delivery policy", () => {
     assert.equal(a, b);
   });
 
-  it("fingerprint changes when narrative excerpt changes", () => {
+  it("fingerprint ignores prose-only rewrites", () => {
     const a = computeDailyReportContentFingerprint(baseSnapshot);
     const b = computeDailyReportContentFingerprint({
       ...baseSnapshot,
       narrative: { written: true, excerpt: "不同的叙事。" },
+    });
+    assert.equal(a, b);
+  });
+
+  it("fingerprint ignores volatile Light counts and REM confidence", () => {
+    const a = computeDailyReportContentFingerprint(baseSnapshot);
+    const b = computeDailyReportContentFingerprint({
+      ...baseSnapshot,
+      light: { candidateCount: 99, ran: true },
+      rem: {
+        ...baseSnapshot.rem,
+        themes: [{ label: "用户偏好 / User Preferences", confidence: 0.51 }],
+      },
+    });
+    assert.equal(a, b);
+  });
+
+  it("fingerprint changes for a genuinely new theme", () => {
+    const a = computeDailyReportContentFingerprint(baseSnapshot);
+    const b = computeDailyReportContentFingerprint({
+      ...baseSnapshot,
+      rem: {
+        ...baseSnapshot.rem,
+        themes: [{ label: "供应链进展 / Supply Chain Progress", confidence: 0.7 }],
+      },
     });
     assert.notEqual(a, b);
   });

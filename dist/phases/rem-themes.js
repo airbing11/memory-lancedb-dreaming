@@ -1,10 +1,12 @@
 import { createHash } from "node:crypto";
 import { runDreamingTextPrompt } from "../llm-subagent.js";
+import { textSimilarityCjkAware } from "../utils.js";
 const THEME_NAMING_SYSTEM_PROMPT = [
     "You name thematic clusters in a memory reflection journal.",
     "For each numbered cluster, output exactly one line:",
     "中文主题名（4-8字） / English Topic Name",
     "Use concise, semantic names — not category labels like fact or other.",
+    "Keep names semantically consistent with the recent-theme list; do not invent synonyms to make an old topic look new.",
     "Output only the numbered lines, no extra commentary.",
 ].join("\n");
 const THEME_LINE_RE = /^\s*(?:\d+[\.\)、]\s*)?(.+?)\s*\/\s*(.+?)\s*$/;
@@ -12,11 +14,17 @@ function buildThemeNamingSessionKey(workspaceDir, nowMs) {
     const workspaceHash = createHash("sha1").update(workspaceDir).digest("hex").slice(0, 12);
     return `dreaming-rem-themes-lancedb-${workspaceHash}-${nowMs}`;
 }
-function buildThemeNamingPrompt(clusters) {
+function buildThemeNamingPrompt(clusters, recentThemeNames) {
     const lines = [
         "以下是今天记忆观测中的一组聚类话题，请为每组生成一个4-8字的中文主题名和一个对应的英文主题名：",
         "",
     ];
+    if (recentThemeNames.length > 0) {
+        lines.push("最近已出现的主题（同一话题请沿用语义，不要为了显得新鲜而换同义词）：");
+        for (const name of recentThemeNames.slice(-20))
+            lines.push(`- ${name}`);
+        lines.push("");
+    }
     for (let i = 0; i < clusters.length; i += 1) {
         const cluster = clusters[i];
         lines.push(`## 聚类 ${i + 1}（标签: ${cluster.tag}，${cluster.count} 条记忆）`);
@@ -120,6 +128,35 @@ export function formatRemReflectionLines(clusters, themeNames) {
     }
     return lines;
 }
+function themeSimilarity(left, right) {
+    const leftParts = left.split("/").map((part) => part.trim()).filter(Boolean);
+    const rightParts = right.split("/").map((part) => part.trim()).filter(Boolean);
+    let best = textSimilarityCjkAware(left, right);
+    for (const leftPart of leftParts) {
+        for (const rightPart of rightParts) {
+            best = Math.max(best, textSimilarityCjkAware(leftPart, rightPart));
+        }
+    }
+    return best;
+}
+export function suppressRepeatedRemThemes(params) {
+    const clusters = [];
+    const themeNames = [];
+    let skipped = 0;
+    for (let index = 0; index < params.clusters.length; index += 1) {
+        const cluster = params.clusters[index];
+        const named = params.themeNames[index] ?? null;
+        const label = named ? `${named.zh} / ${named.en}` : cluster.tag;
+        const repeated = params.recentThemeNames.some((recent) => themeSimilarity(label, recent) >= params.similarityThreshold);
+        if (repeated) {
+            skipped += 1;
+            continue;
+        }
+        clusters.push(cluster);
+        themeNames.push(named);
+    }
+    return { clusters, themeNames, skipped };
+}
 export async function nameRemClusters(params) {
     const empty = params.clusters.map(() => null);
     if (!params.config.model?.trim() || params.clusters.length === 0)
@@ -127,7 +164,7 @@ export async function nameRemClusters(params) {
     if (!params.subagent && !params.llmComplete)
         return empty;
     const sessionKey = buildThemeNamingSessionKey(params.workspaceDir, params.nowMs);
-    const message = buildThemeNamingPrompt(params.clusters);
+    const message = buildThemeNamingPrompt(params.clusters, params.recentThemeNames ?? []);
     const raw = await runDreamingTextPrompt({
         subagent: params.subagent,
         llmComplete: params.llmComplete,

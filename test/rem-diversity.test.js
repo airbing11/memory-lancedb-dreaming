@@ -4,6 +4,7 @@ import { selectLastingTruths, pickClusterSpotlightMemories } from "../dist/rem-d
 import {
   appendRemHistoryRun,
   collectRecentRemMemoryIds,
+  collectRecentRemThemeNames,
   readRemHistory,
 } from "../dist/rem-history.js";
 import fs from "node:fs/promises";
@@ -129,5 +130,36 @@ describe("REM history", () => {
       field: "lastingTruthIds",
     });
     assert.equal(recent.has(STALE_TRUTHS[0]), true);
+  });
+
+  it("merges same-day reruns so themes cool down immediately", async () => {
+    const workspaceDir = await fs.mkdtemp(path.join(os.tmpdir(), "dreaming-rem-history-"));
+    await appendRemHistoryRun({
+      workspaceDir,
+      day: "2026-08-07",
+      lastingTruthIds: [],
+      clusterSpotlightIds: [],
+      clusterThemeNames: ["技术运维排障 / Technical Troubleshooting"],
+    });
+    await appendRemHistoryRun({
+      workspaceDir,
+      day: "2026-08-07",
+      lastingTruthIds: [],
+      clusterSpotlightIds: [],
+      clusterThemeNames: ["用户需求与指令 / User Requests"],
+    });
+    const history = await readRemHistory(workspaceDir);
+    assert.equal(history.runs.length, 1);
+    assert.deepEqual(
+      collectRecentRemThemeNames({
+        history,
+        nowMs: Date.parse("2026-08-07T12:00:00.000Z"),
+        windowDays: 7,
+      }),
+      [
+        "技术运维排障 / Technical Troubleshooting",
+        "用户需求与指令 / User Requests",
+      ]
+    );
   });
 });

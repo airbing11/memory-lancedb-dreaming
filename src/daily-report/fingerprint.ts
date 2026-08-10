@@ -1,17 +1,22 @@
 import { createHash } from "node:crypto";
+import { normalizeTextForCompare } from "../utils.js";
 import type { DailyReportSnapshot } from "./types.js";
 
-/** Content-only fingerprint (excludes day / generatedAt) for push dedupe. */
+/**
+ * Semantic fingerprint for push dedupe.
+ * Volatile counts, confidence, evidence summaries, and prose wording are
+ * intentionally excluded so cosmetic rewrites do not trigger another push.
+ */
 export function computeDailyReportContentFingerprint(snapshot: DailyReportSnapshot): string {
   const payload = {
-    light: snapshot.light.candidateCount,
-    rem: snapshot.rem.themes.map((theme) => ({
-      label: theme.label,
-      confidence: theme.confidence,
-      summary: theme.summary ?? "",
-    })),
+    phases: {
+      light: snapshot.light.ran,
+      rem: snapshot.rem.ran,
+      deep: snapshot.deep.ran,
+    },
+    rem: snapshot.rem.themes.map((theme) => normalizeTextForCompare(theme.label)).sort(),
     deep: snapshot.deep.promotedCount,
-    narrative: (snapshot.narrative.excerpt ?? "").trim(),
+    narrative: Boolean(snapshot.narrative.excerpt?.trim()),
   };
   return createHash("sha256").update(JSON.stringify(payload)).digest("hex").slice(0, 16);
 }

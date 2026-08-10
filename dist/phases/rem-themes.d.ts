@@ -18,6 +18,22 @@ export declare function formatRemReflectionLines(clusters: RemCluster[], themeNa
     zh: string;
     en: string;
 } | null>): string[];
+export declare function suppressRepeatedRemThemes(params: {
+    clusters: RemCluster[];
+    themeNames: Array<{
+        zh: string;
+        en: string;
+    } | null>;
+    recentThemeNames: string[];
+    similarityThreshold: number;
+}): {
+    clusters: RemCluster[];
+    themeNames: Array<{
+        zh: string;
+        en: string;
+    } | null>;
+    skipped: number;
+};
 export declare function nameRemClusters(params: {
     clusters: RemCluster[];
     config: RemConfig;
@@ -26,6 +42,7 @@ export declare function nameRemClusters(params: {
     workspaceDir: string;
     nowMs: number;
     logger: PluginLogger;
+    recentThemeNames?: string[];
 }): Promise<Array<{
     zh: string;
     en: string;

@@ -54,16 +54,33 @@ export async function appendRemHistoryRun(params: {
 }): Promise<void> {
   const historyPath = resolveRemHistoryPath(params.workspaceDir);
   const history = await readRemHistory(params.workspaceDir);
+  const existing = history.runs.find((run) => run.day === params.day);
   const filtered = history.runs.filter((run) => run.day !== params.day);
+  const unique = (values: string[]) => [...new Set(values)];
   filtered.push({
     day: params.day,
-    lastingTruthIds: params.lastingTruthIds,
-    clusterSpotlightIds: params.clusterSpotlightIds,
-    ...(params.lastingTruthTexts && params.lastingTruthTexts.length > 0
-      ? { lastingTruthTexts: params.lastingTruthTexts }
+    lastingTruthIds: unique([...(existing?.lastingTruthIds ?? []), ...params.lastingTruthIds]),
+    clusterSpotlightIds: unique([
+      ...(existing?.clusterSpotlightIds ?? []),
+      ...params.clusterSpotlightIds,
+    ]),
+    ...((existing?.lastingTruthTexts?.length ?? 0) > 0 ||
+    (params.lastingTruthTexts?.length ?? 0) > 0
+      ? {
+          lastingTruthTexts: unique([
+            ...(existing?.lastingTruthTexts ?? []),
+            ...(params.lastingTruthTexts ?? []),
+          ]),
+        }
       : {}),
-    ...(params.clusterThemeNames && params.clusterThemeNames.length > 0
-      ? { clusterThemeNames: params.clusterThemeNames }
+    ...((existing?.clusterThemeNames?.length ?? 0) > 0 ||
+    (params.clusterThemeNames?.length ?? 0) > 0
+      ? {
+          clusterThemeNames: unique([
+            ...(existing?.clusterThemeNames ?? []),
+            ...(params.clusterThemeNames ?? []),
+          ]),
+        }
       : {}),
   });
   filtered.sort((a, b) => a.day.localeCompare(b.day));
@@ -113,6 +130,26 @@ export function collectRecentRemTruthTexts(params: {
     }
   }
   return texts;
+}
+
+export function collectRecentRemThemeNames(params: {
+  history: RemHistory;
+  nowMs: number;
+  windowDays: number;
+  excludeDay?: string;
+}): string[] {
+  const cutoffMs = calculateLookbackCutoffMs(params.nowMs, params.windowDays);
+  const names: string[] = [];
+  for (const run of params.history.runs) {
+    if (params.excludeDay && run.day === params.excludeDay) continue;
+    const dayMs = Date.parse(`${run.day}T12:00:00.000Z`);
+    if (!Number.isFinite(dayMs) || dayMs < cutoffMs) continue;
+    for (const name of run.clusterThemeNames ?? []) {
+      const trimmed = name.trim();
+      if (trimmed.length > 0) names.push(trimmed);
+    }
+  }
+  return names;
 }
 
 export function resolveRemReportDay(nowMs: number, timezone: string): string {

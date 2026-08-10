@@ -35,5 +35,11 @@ export declare function collectRecentRemTruthTexts(params: {
     windowDays: number;
     excludeDay?: string;
 }): string[];
+export declare function collectRecentRemThemeNames(params: {
+    history: RemHistory;
+    nowMs: number;
+    windowDays: number;
+    excludeDay?: string;
+}): string[];
 export declare function resolveRemReportDay(nowMs: number, timezone: string): string;
 //# sourceMappingURL=rem-history.d.ts.map

@@ -22,6 +22,18 @@ export const RemDreamingConfigSchema = Type.Object({
         maximum: 30,
         description: "Rotate cluster exemplar memories recently used in REM reflections",
     }),
+    themeCooldownDays: Type.Number({
+        default: 7,
+        minimum: 1,
+        maximum: 30,
+        description: "Suppress REM theme labels that are semantically similar to themes surfaced in this many recent days",
+    }),
+    themeSimilarityThreshold: Type.Number({
+        default: 0.55,
+        minimum: 0.2,
+        maximum: 1.0,
+        description: "Similarity at or above which a REM theme is treated as a recently surfaced repeat",
+    }),
     truthDedupeWindowDays: Type.Number({
         default: 30,
         minimum: 1,
@@ -82,6 +94,36 @@ export const DailyReportConfigSchema = Type.Object({
 export const NarrativeConfigSchema = Type.Object({
     enabled: Type.Boolean({ default: true }),
     languages: Type.Array(NarrativeLanguageSchema, { default: ["zh", "en"] }),
+    sourceCooldownDays: Type.Number({
+        default: 7,
+        minimum: 1,
+        maximum: 30,
+        description: "On zero-promotion days, exclude Light snippets already used in recent narrative entries",
+    }),
+    sourceSimilarityThreshold: Type.Number({
+        default: 0.42,
+        minimum: 0.2,
+        maximum: 1.0,
+        description: "Similarity at or above which a narrative source snippet is treated as recently used",
+    }),
+    minNovelSnippets: Type.Number({
+        default: 2,
+        minimum: 1,
+        maximum: 12,
+        description: "Minimum novel Light snippets required to write a zero-promotion snapshot narrative",
+    }),
+    outputDedupeWindowDays: Type.Number({
+        default: 14,
+        minimum: 1,
+        maximum: 60,
+        description: "Compare generated narrative text with this many recent narrative entries",
+    }),
+    outputSimilarityThreshold: Type.Number({
+        default: 0.55,
+        minimum: 0.2,
+        maximum: 1.0,
+        description: "Similarity at or above which generated narrative text is skipped as a reworded repeat",
+    }),
     model: Type.Optional(Type.String({ description: "Model override for narrative generation" })),
 });
 export const DreamingConfigSchema = Type.Object({
@@ -121,6 +163,8 @@ export const DEFAULT_DREAMING_CONFIG = {
         minPatternStrength: 0.45,
         lastingTruthCooldownDays: 7,
         clusterSpotlightCooldownDays: 5,
+        themeCooldownDays: 7,
+        themeSimilarityThreshold: 0.55,
         truthDedupeWindowDays: 30,
         truthSimilarityThreshold: 0.42,
         excludePromoted: true,
@@ -135,7 +179,15 @@ export const DEFAULT_DREAMING_CONFIG = {
         maxAgeDays: 30,
         idleNoveltyAfterDays: 7,
     },
-    narrative: { enabled: true, languages: ["zh", "en"] },
+    narrative: {
+        enabled: true,
+        languages: ["zh", "en"],
+        sourceCooldownDays: 7,
+        sourceSimilarityThreshold: 0.42,
+        minNovelSnippets: 2,
+        outputDedupeWindowDays: 14,
+        outputSimilarityThreshold: 0.55,
+    },
     dailyReport: {
         enabled: true,
         cron: "0 4 * * *",

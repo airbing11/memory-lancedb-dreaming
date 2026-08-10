@@ -5,11 +5,11 @@ set -euo pipefail
 PLUGIN_ID="memory-lancedb-dreaming"
 OPENCLAW_HOME="${OPENCLAW_HOME:-$HOME/.openclaw}"
 INSTALL_DIR="${OPENCLAW_PLUGINS_DIR:-$OPENCLAW_HOME/plugins}/$PLUGIN_ID"
-TGZ="${1:-memory-lancedb-dreaming-0.3.14.tgz}"
+TGZ="${1:-memory-lancedb-dreaming-0.3.16.tgz}"
 
 if [[ ! -f "$TGZ" ]]; then
   echo "error: tarball not found: $TGZ" >&2
-  echo "usage: $0 [path/to/memory-lancedb-dreaming-0.3.14.tgz]" >&2
+  echo "usage: $0 [path/to/memory-lancedb-dreaming-0.3.16.tgz]" >&2
   exit 1
 fi
 

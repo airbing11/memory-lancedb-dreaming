@@ -144,7 +144,7 @@ export function buildSnapshotFromPipeline(params) {
             ran: params.phasesRan.light,
         },
         rem: {
-            themeCount: themes.length > 0 ? themes.length : params.remCount > 0 ? 1 : 0,
+            themeCount: themes.length,
             themes,
             ran: params.phasesRan.rem,
         },

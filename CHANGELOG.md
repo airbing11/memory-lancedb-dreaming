@@ -1,5 +1,17 @@
 # Changelog
 
+## [0.3.16] - 2026-08-10
+### Fixed
+- report zero novel REM themes as `themeCount=0` instead of converting a non-zero analyzed-memory count into one phantom theme
+
+## [0.3.15] - 2026-08-07
+### Fixed
+- suppress REM theme labels similar to themes surfaced during the configurable 7-day cooldown
+- persist narrative source history and skip recently narrated Light material before calling the LLM
+- skip zero-promotion snapshot narratives unless at least 2 novel snippets remain
+- reject generated narrative output that substantially repeats a recent diary entry
+- make `pushOn: changed` ignore volatile counts, confidence, evidence summaries, and prose-only rewrites
+
 ## [0.3.14] - 2026-08-04
 ### Fixed
 - restore ClawHub / manifest display name to `Memory LanceDB Dreaming` (0.3.13 accidentally published as `Dreaming (LanceDB)`)

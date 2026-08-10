@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { describe, it } from "node:test";
-import { parseThemeLines } from "../dist/phases/rem-themes.js";
+import { parseThemeLines, suppressRepeatedRemThemes } from "../dist/phases/rem-themes.js";
 
 describe("parseThemeLines", () => {
   it("parses valid bilingual theme lines", () => {
@@ -31,5 +31,50 @@ describe("parseThemeLines", () => {
   it("pads with null up to clusterCount", () => {
     const parsed = parseThemeLines("", 3);
     assert.deepEqual(parsed, [null, null, null]);
+  });
+});
+
+describe("suppressRepeatedRemThemes", () => {
+  const clusters = [
+    {
+      tag: "technical",
+      strength: 1,
+      count: 10,
+      memories: [],
+      spotlightMemories: [],
+    },
+    {
+      tag: "business",
+      strength: 0.7,
+      count: 7,
+      memories: [],
+      spotlightMemories: [],
+    },
+  ];
+
+  it("suppresses recent bilingual themes instead of renaming them", () => {
+    const result = suppressRepeatedRemThemes({
+      clusters,
+      themeNames: [
+        { zh: "技术运维排障", en: "Technical Troubleshooting" },
+        { zh: "企业合作进展", en: "Business Partnership" },
+      ],
+      recentThemeNames: ["技术运维排障 / Technical Operations"],
+      similarityThreshold: 0.55,
+    });
+    assert.equal(result.skipped, 1);
+    assert.equal(result.clusters.length, 1);
+    assert.equal(result.themeNames[0].zh, "企业合作进展");
+  });
+
+  it("keeps genuinely new themes", () => {
+    const result = suppressRepeatedRemThemes({
+      clusters: clusters.slice(1),
+      themeNames: [{ zh: "企业合作进展", en: "Business Partnership" }],
+      recentThemeNames: ["技术运维排障 / Technical Troubleshooting"],
+      similarityThreshold: 0.55,
+    });
+    assert.equal(result.skipped, 0);
+    assert.equal(result.clusters.length, 1);
   });
 });

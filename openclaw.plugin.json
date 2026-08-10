@@ -2,7 +2,7 @@
   "id": "memory-lancedb-dreaming",
   "name": "Memory LanceDB Dreaming",
   "description": "Light/REM/Deep dreaming for memory-lancedb: isolated session cron, narrative DREAMS.md, promotion, and daily report (zero-LLM file summary + optional push to Feishu/WeCom/etc. via dailyReport.delivery).",
-  "version": "0.3.14",
+  "version": "0.3.16",
   "activation": {
     "onStartup": true
   },
@@ -89,6 +89,16 @@
           "clusterSpotlightCooldownDays": {
             "type": "number",
             "default": 5
+          },
+          "themeCooldownDays": {
+            "type": "number",
+            "default": 7,
+            "description": "Suppress REM theme labels similar to themes surfaced in this many recent days"
+          },
+          "themeSimilarityThreshold": {
+            "type": "number",
+            "default": 0.55,
+            "description": "Similarity at or above which a REM theme is treated as a recent repeat"
           },
           "truthDedupeWindowDays": {
             "type": "number",
@@ -181,6 +191,29 @@
               "zh",
               "en"
             ]
+          },
+          "sourceCooldownDays": {
+            "type": "number",
+            "default": 7,
+            "description": "On zero-promotion days, exclude Light snippets used in recent narrative entries"
+          },
+          "sourceSimilarityThreshold": {
+            "type": "number",
+            "default": 0.42
+          },
+          "minNovelSnippets": {
+            "type": "number",
+            "default": 2,
+            "description": "Minimum novel Light snippets required for a zero-promotion snapshot narrative"
+          },
+          "outputDedupeWindowDays": {
+            "type": "number",
+            "default": 14
+          },
+          "outputSimilarityThreshold": {
+            "type": "number",
+            "default": 0.55,
+            "description": "Skip generated narrative text that is too similar to a recent entry"
           },
           "model": {
             "type": "string",
