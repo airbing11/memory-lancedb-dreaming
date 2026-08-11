@@ -1,5 +1,9 @@
 # Changelog
 
+## [0.3.17] - 2026-08-11
+### Fixed
+- strip model-emitted Chinese cluster prefixes such as `聚类 1：`, `聚类1:`, and `聚类 2、` from REM theme names
+
 ## [0.3.16] - 2026-08-10
 ### Fixed
 - report zero novel REM themes as `themeCount=0` instead of converting a non-zero analyzed-memory count into one phantom theme

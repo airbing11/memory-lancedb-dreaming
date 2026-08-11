@@ -24,7 +24,7 @@ const THEME_NAMING_SYSTEM_PROMPT = [
 ].join("\n");
 
 const THEME_LINE_RE =
-  /^\s*(?:\d+[\.\)、]\s*)?(.+?)\s*\/\s*(.+?)\s*$/;
+  /^\s*(?:(?:\d+[\.\)、]\s*)|(?:聚类\s*\d+\s*[:：、]?\s*))?(.+?)\s*\/\s*(.+?)\s*$/;
 
 function buildThemeNamingSessionKey(workspaceDir: string, nowMs: number): string {
   const workspaceHash = createHash("sha1").update(workspaceDir).digest("hex").slice(0, 12);

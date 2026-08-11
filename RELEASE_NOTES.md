@@ -1,7 +1,7 @@
-# memory-lancedb-dreaming v0.3.16 — 待测说明
+# memory-lancedb-dreaming v0.3.17 — 待测说明
 
-> **日期：** 2026-08-10
-> **安装包：** `memory-lancedb-dreaming-0.3.16.tgz`
+> **日期：** 2026-08-11
+> **安装包：** `memory-lancedb-dreaming-0.3.17.tgz`
 
 ## 目标
 
@@ -15,6 +15,7 @@
 - 生成文本与近 14 天日记相似时不写入
 - `pushOn: changed` 忽略候选数、置信度、证据摘要及散文措辞变化
 - 修正 REM 零新主题时概要错误显示 1 个主题的问题
+- 清理模型偶尔附加的 `聚类 N：`、`聚类N:`、`聚类 N、` 主题前缀
 
 ## 预期表现
 
@@ -26,9 +27,10 @@
 ## 本地安装
 
 ```bash
-bash scripts/install.sh memory-lancedb-dreaming-0.3.16.tgz
+bash scripts/install.sh memory-lancedb-dreaming-0.3.17.tgz
 openclaw gateway restart
 ```
 
-确认 `dreaming_status.version=0.3.16`，运行一次 `phase=all`：当 REM 报告为
-`No novel REM themes surfaced` 时，日报概要必须显示 `0 个主题模式`。
+确认 `dreaming_status.version=0.3.17`，运行一次 `phase=all`。若模型返回
+`聚类 1：东泓业务资料 / Donghong Business Data`，最终报告必须显示为
+`东泓业务资料 / Donghong Business Data`。

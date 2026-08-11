@@ -12,6 +12,21 @@ describe("parseThemeLines", () => {
     ]);
   });
 
+  it("strips numeric and Chinese cluster prefixes", () => {
+    const raw = [
+      "聚类 1：东泓业务资料 / Donghong Business Data",
+      "聚类1: 东泓合资品牌 / Donghong JV Branding",
+      "聚类 2、灾备验证 / Disaster Recovery Validation",
+      "1. 系统运维排故 / System Maintenance",
+      "音色与语音 / Voice & TTS",
+    ].join("\n");
+    const parsed = parseThemeLines(raw, 5);
+    assert.deepEqual(
+      parsed.map((theme) => theme?.zh),
+      ["东泓业务资料", "东泓合资品牌", "灾备验证", "系统运维排故", "音色与语音"]
+    );
+  });
+
   it("rejects the echoed format placeholder", () => {
     const raw = "中文主题名（4-8字） / English Topic Name";
     const parsed = parseThemeLines(raw, 1);

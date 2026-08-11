@@ -9,7 +9,7 @@ const THEME_NAMING_SYSTEM_PROMPT = [
     "Keep names semantically consistent with the recent-theme list; do not invent synonyms to make an old topic look new.",
     "Output only the numbered lines, no extra commentary.",
 ].join("\n");
-const THEME_LINE_RE = /^\s*(?:\d+[\.\)、]\s*)?(.+?)\s*\/\s*(.+?)\s*$/;
+const THEME_LINE_RE = /^\s*(?:(?:\d+[\.\)、]\s*)|(?:聚类\s*\d+\s*[:：、]?\s*))?(.+?)\s*\/\s*(.+?)\s*$/;
 function buildThemeNamingSessionKey(workspaceDir, nowMs) {
     const workspaceHash = createHash("sha1").update(workspaceDir).digest("hex").slice(0, 12);
     return `dreaming-rem-themes-lancedb-${workspaceHash}-${nowMs}`;
