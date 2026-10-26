@@ -86,6 +86,10 @@ export function buildManagedDreamingCronJob(config: DreamingConfig) {
 }
 
 function isManagedDreamingJob(job: CronJob): boolean {
+  // The daily-report tag intentionally retains the historic dreaming tag as a
+  // prefix. Classify it first so the dreaming reconciler never adopts or
+  // prunes the independently managed daily-report job.
+  if (isManagedDailyReportJob(job)) return false;
   if (normalizeTrimmedString(job.description)?.includes(MANAGED_DREAMING_CRON_TAG)) return true;
   const name = normalizeTrimmedString(job.name);
   const payloadText = normalizeTrimmedString(job.payload?.text ?? job.payload?.message);

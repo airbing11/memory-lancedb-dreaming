@@ -149,12 +149,58 @@ describe("managed cron jobs (isolated sessions with completion delivery disabled
         throw new Error("unexpected update");
       },
       async remove() {
-        return { removed: false };
+        throw new Error("unexpected remove");
       },
     };
     const logger = { info() {}, warn() {}, error() {} };
 
     const result = await reconcileManagedDreamingCron({ cron, config, logger });
     assert.equal(result.status, "noop");
+  });
+
+  it("keeps dreaming and daily-report job identities stable across reconcile ticks", async () => {
+    const config = configWithDelivery();
+    const jobs = [];
+    const mutations = { added: 0, updated: 0, removed: 0 };
+    let nextId = 1;
+
+    const cron = {
+      async list() {
+        return jobs;
+      },
+      async add(job) {
+        jobs.push({ id: `j${nextId++}`, createdAtMs: nextId, ...job });
+        mutations.added += 1;
+        return { added: true };
+      },
+      async update(id, patch) {
+        const index = jobs.findIndex((job) => job.id === id);
+        assert.notEqual(index, -1);
+        jobs[index] = { ...jobs[index], ...patch };
+        mutations.updated += 1;
+        return { updated: true };
+      },
+      async remove(id) {
+        const index = jobs.findIndex((job) => job.id === id);
+        if (index === -1) return { removed: false };
+        jobs.splice(index, 1);
+        mutations.removed += 1;
+        return { removed: true };
+      },
+    };
+    const logger = { info() {}, warn() {}, error() {} };
+
+    for (let tick = 0; tick < 5; tick += 1) {
+      await reconcileManagedDreamingCron({ cron, config, logger });
+    }
+
+    assert.deepEqual(
+      jobs.map((job) => ({ id: job.id, name: job.name })),
+      [
+        { id: "j1", name: MANAGED_DREAMING_CRON_NAME },
+        { id: "j2", name: MANAGED_DAILY_REPORT_CRON_NAME },
+      ]
+    );
+    assert.deepEqual(mutations, { added: 2, updated: 0, removed: 0 });
   });
 });

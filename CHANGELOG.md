@@ -1,5 +1,11 @@
 # Changelog
 
+## [0.3.18] - 2026-10-26
+### Fixed
+- prevent the daily-report cron tag from also matching the broader dreaming cron tag
+- stop the 60-second reconciler from pruning and recreating the daily-report job, preserving its ID and run history
+- add stateful multi-tick regression coverage for stable dreaming and daily-report cron identities
+
 ## [0.3.17] - 2026-08-11
 ### Fixed
 - strip model-emitted Chinese cluster prefixes such as `聚类 1：`, `聚类1:`, and `聚类 2、` from REM theme names
