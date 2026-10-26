@@ -2,16 +2,9 @@
   "id": "memory-lancedb-dreaming",
   "name": "Memory LanceDB Dreaming",
   "description": "Light/REM/Deep dreaming for memory-lancedb: isolated session cron, narrative DREAMS.md, promotion, and daily report (zero-LLM file summary + optional push to Feishu/WeCom/etc. via dailyReport.delivery).",
-  "version": "0.3.18",
+  "version": "0.3.19",
   "activation": {
     "onStartup": true
-  },
-  "contracts": {
-    "tools": [
-      "dreaming_status",
-      "dreaming_trigger",
-      "dreaming_doctor"
-    ]
   },
   "toolMetadata": {
     "dreaming_status": {

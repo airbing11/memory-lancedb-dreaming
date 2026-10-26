@@ -1,5 +1,11 @@
 # Changelog
 
+## [0.3.19] - 2026-10-26
+### Fixed
+- prevent the daily-report cron tag from also matching the broader dreaming cron tag
+- stop the 60-second reconciler from pruning and recreating the daily-report job, preserving its ID and run history
+- remove the obsolete `contracts.tools` manifest declaration for current OpenClaw / ClawHub compatibility
+
 ## [0.3.18] - 2026-10-26
 ### Fixed
 - prevent the daily-report cron tag from also matching the broader dreaming cron tag

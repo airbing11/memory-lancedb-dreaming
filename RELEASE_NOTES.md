@@ -1,7 +1,7 @@
-# memory-lancedb-dreaming v0.3.18
+# memory-lancedb-dreaming v0.3.19
 
 > **Date:** 2026-10-26
-> **Package:** `memory-lancedb-dreaming-0.3.18.tgz`
+> **Package:** `memory-lancedb-dreaming-0.3.19.tgz`
 
 ## Fixed
 
@@ -9,6 +9,7 @@
 - Stop the 60-second reconciler from deleting and recreating the daily-report cron.
 - Preserve both managed cron IDs, run history, and last-run state across reconcile ticks.
 - Add a stateful five-tick regression test covering a clean installation.
+- Remove the obsolete `contracts.tools` manifest declaration for current ClawHub compatibility.
 
 ## Verification
 
@@ -19,7 +20,7 @@
 ## Upgrade
 
 ```bash
-bash scripts/install.sh memory-lancedb-dreaming-0.3.18.tgz
+bash scripts/install.sh memory-lancedb-dreaming-0.3.19.tgz
 openclaw gateway restart
 ```
 
