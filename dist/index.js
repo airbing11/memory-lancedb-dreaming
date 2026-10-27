@@ -6,7 +6,7 @@ import { runDreamingDoctor } from "./doctor.js";
 import { summarizePluginEntryPolicy, warnIfCronHookBlocked, warnIfModelOverrideBlocked } from "./hook-policy.js";
 import { RUNTIME_CRON_RECONCILE_INTERVAL_MS, STARTUP_CRON_RETRY_DELAY_MS, STARTUP_CRON_MAX_RETRIES, DAILY_REPORT_TRIGGER_TOKEN, DREAMING_TRIGGER_TOKEN, PLUGIN_VERSION, } from "./constants.js";
 import { reconcileManagedDreamingCron, resolveCronServiceFromCandidate, resolveEffectiveDailyReportCronExpr, } from "./cron.js";
-import { createDreamingDb, getCachedLancedbConfig, getResolvedLanceDbPluginId, initLancedbConfigCache, refreshLancedbConfigCache, } from "./lancedb-client.js";
+import { createDreamingDb, getCachedLancedbConfig, getResolvedLanceDbPluginId, initLancedbConfigCache, refreshLancedbConfigCache, sanitizeLancedbError, summarizeLancedbConfig, } from "./lancedb-client.js";
 import { runDreamingPipeline } from "./pipeline.js";
 import { endPipeline, tryBeginPipeline, } from "./pipeline-lock.js";
 import { readDreamingRunMetadata, recordDreamingRun } from "./run-metadata.js";
@@ -214,8 +214,12 @@ const plugin = definePluginEntry({
                     return { ok: true, result, dailyReportPublished };
                 }
                 catch (err) {
-                    api.logger.error(`memory-lancedb-dreaming: dreaming phases failed: ${String(err)}`);
-                    return { ok: false, reason: "error", error: String(err) };
+                    api.logger.error(`memory-lancedb-dreaming: dreaming phases failed: ${sanitizeLancedbError(err)}`);
+                    return {
+                        ok: false,
+                        reason: "error",
+                        error: "Dreaming pipeline failed; see gateway logs",
+                    };
                 }
                 finally {
                     endPipeline();
@@ -429,8 +433,8 @@ const plugin = definePluginEntry({
                             memoryCount = await db.count();
                         }
                         catch (err) {
-                            lancedbError = String(err);
-                            api.logger.warn(`memory-lancedb-dreaming: status count failed: ${lancedbError}`);
+                            lancedbError = "LanceDB status check failed; see gateway logs";
+                            api.logger.warn(`memory-lancedb-dreaming: status count failed: ${sanitizeLancedbError(err)}`);
                         }
                         const activeConfig = refreshConfig();
                         const workspaceDir = resolveWorkspace();
@@ -451,7 +455,7 @@ const plugin = definePluginEntry({
                             timezone: activeConfig.timezone,
                             autoManageCron: activeConfig.autoManageCron,
                             hooks: summarizePluginEntryPolicy(api, activeConfig),
-                            lancedb: getCachedLancedbConfig(),
+                            lancedb: summarizeLancedbConfig(getCachedLancedbConfig()),
                             lancedbPluginId: getResolvedLanceDbPluginId(),
                             lancedbError,
                             memoryCount,
@@ -572,8 +576,10 @@ const plugin = definePluginEntry({
                             memoryCount = await db.count();
                         }
                         catch (err) {
-                            lancedbError = String(err);
+                            lancedbError = "LanceDB status check failed; see gateway logs";
+                            api.logger.warn(`memory-lancedb-dreaming: doctor count failed: ${sanitizeLancedbError(err)}`);
                         }
+                        const lancedbStatus = summarizeLancedbConfig(getCachedLancedbConfig());
                         const report = await runDreamingDoctor({
                             config: activeConfig,
                             workspaceDir,
@@ -581,7 +587,7 @@ const plugin = definePluginEntry({
                             subagentAllowModelOverride: readPluginSubagentPolicy(api).allowModelOverride,
                             needsModelOverride: dreamingConfigNeedsModelOverride(activeConfig),
                             lancedbPluginId: getResolvedLanceDbPluginId(),
-                            lancedbDbPath: getCachedLancedbConfig()?.dbPath ?? null,
+                            lancedbDbPath: lancedbStatus?.dbPath ?? null,
                             lancedbError,
                             memoryCount,
                             mainCronExpr: activeConfig.cron,

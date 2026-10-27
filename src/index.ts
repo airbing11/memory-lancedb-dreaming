@@ -37,6 +37,8 @@ import {
   getResolvedLanceDbPluginId,
   initLancedbConfigCache,
   refreshLancedbConfigCache,
+  sanitizeLancedbError,
+  summarizeLancedbConfig,
 } from "./lancedb-client.js";
 import { runDreamingPipeline, type DreamingRunResult } from "./pipeline.js";
 import {
@@ -312,8 +314,14 @@ const plugin: OpenClawPluginDefinition = definePluginEntry({
           }
           return { ok: true as const, result, dailyReportPublished };
         } catch (err) {
-          api.logger.error(`memory-lancedb-dreaming: dreaming phases failed: ${String(err)}`);
-          return { ok: false as const, reason: "error" as const, error: String(err) };
+          api.logger.error(
+            `memory-lancedb-dreaming: dreaming phases failed: ${sanitizeLancedbError(err)}`
+          );
+          return {
+            ok: false as const,
+            reason: "error" as const,
+            error: "Dreaming pipeline failed; see gateway logs",
+          };
         } finally {
           endPipeline();
         }
@@ -563,8 +571,10 @@ const plugin: OpenClawPluginDefinition = definePluginEntry({
                 const db = createDreamingDb();
                 memoryCount = await db.count();
               } catch (err) {
-                lancedbError = String(err);
-                api.logger.warn(`memory-lancedb-dreaming: status count failed: ${lancedbError}`);
+                lancedbError = "LanceDB status check failed; see gateway logs";
+                api.logger.warn(
+                  `memory-lancedb-dreaming: status count failed: ${sanitizeLancedbError(err)}`
+                );
               }
               const activeConfig = refreshConfig();
               const workspaceDir = resolveWorkspace();
@@ -586,7 +596,7 @@ const plugin: OpenClawPluginDefinition = definePluginEntry({
                 timezone: activeConfig.timezone,
                 autoManageCron: activeConfig.autoManageCron,
                 hooks: summarizePluginEntryPolicy(api, activeConfig),
-                lancedb: getCachedLancedbConfig(),
+                lancedb: summarizeLancedbConfig(getCachedLancedbConfig()),
                 lancedbPluginId: getResolvedLanceDbPluginId(),
                 lancedbError,
                 memoryCount,
@@ -715,8 +725,12 @@ const plugin: OpenClawPluginDefinition = definePluginEntry({
                 const db = createDreamingDb();
                 memoryCount = await db.count();
               } catch (err) {
-                lancedbError = String(err);
+                lancedbError = "LanceDB status check failed; see gateway logs";
+                api.logger.warn(
+                  `memory-lancedb-dreaming: doctor count failed: ${sanitizeLancedbError(err)}`
+                );
               }
+              const lancedbStatus = summarizeLancedbConfig(getCachedLancedbConfig());
               const report = await runDreamingDoctor({
                 config: activeConfig,
                 workspaceDir,
@@ -726,7 +740,7 @@ const plugin: OpenClawPluginDefinition = definePluginEntry({
                   readPluginSubagentPolicy(api).allowModelOverride,
                 needsModelOverride: dreamingConfigNeedsModelOverride(activeConfig),
                 lancedbPluginId: getResolvedLanceDbPluginId(),
-                lancedbDbPath: getCachedLancedbConfig()?.dbPath ?? null,
+                lancedbDbPath: lancedbStatus?.dbPath ?? null,
                 lancedbError,
                 memoryCount,
                 mainCronExpr: activeConfig.cron,

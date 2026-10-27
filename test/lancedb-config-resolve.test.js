@@ -10,6 +10,8 @@ import {
   initLancedbConfigCache,
   parseMemoryLancedbEntry,
   refreshLancedbConfigCache,
+  sanitizeLancedbError,
+  summarizeLancedbConfig,
 } from "../dist/lancedb-client.js";
 
 const lancedbConfig = {
@@ -133,5 +135,62 @@ describe("lancedb config resolve", () => {
     config.plugins.entries["memory-lancedb-pro"].config.dbPath = "/new/lancedb";
     refreshLancedbConfigCache(api);
     assert.equal(getCachedLancedbConfig()?.dbPath, "/new/lancedb");
+  });
+
+  it("never exposes storage credentials in the public status summary", () => {
+    const summary = summarizeLancedbConfig({
+      dbPath: "s3://user:password@example.test/memory?token=query-secret#fragment-secret",
+      dimensions: 1536,
+      pluginId: "memory-lancedb-pro",
+      storageOptions: {
+        accessKeyId: "AKIA_TEST_SECRET",
+        secretAccessKey: "storage-secret-value",
+        sessionToken: "session-secret-value",
+      },
+    });
+    const serialized = JSON.stringify(summary);
+
+    assert.deepEqual(summary, {
+      dbPath: "s3://example.test/memory",
+      dimensions: 1536,
+      storageOptionsConfigured: true,
+      pluginId: "memory-lancedb-pro",
+    });
+    for (const sensitiveText of [
+      "user",
+      "password",
+      "query-secret",
+      "fragment-secret",
+      "accessKeyId",
+      "AKIA_TEST_SECRET",
+      "secretAccessKey",
+      "storage-secret-value",
+      "sessionToken",
+      "session-secret-value",
+    ]) {
+      assert.equal(serialized.includes(sensitiveText), false);
+    }
+  });
+
+  it("redacts known storage credentials and remote URI secrets from errors", () => {
+    const config = {
+      dbPath: "s3://user:password@example.test/memory?token=query-secret",
+      dimensions: 1536,
+      storageOptions: {
+        accessKeyId: "AKIA_TEST_SECRET",
+        secretAccessKey: "storage-secret-value",
+      },
+    };
+    const sanitized = sanitizeLancedbError(
+      new Error(
+        `connect ${config.dbPath} failed for AKIA_TEST_SECRET / storage-secret-value`
+      ),
+      config
+    );
+
+    assert.equal(
+      sanitized,
+      "Error: connect s3://example.test/memory failed for [REDACTED] / [REDACTED]"
+    );
   });
 });

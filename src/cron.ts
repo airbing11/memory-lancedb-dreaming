@@ -86,56 +86,8 @@ export function buildManagedDreamingCronJob(config: DreamingConfig) {
 }
 
 function isManagedDreamingJob(job: CronJob): boolean {
-  // The daily-report tag intentionally retains the historic dreaming tag as a
-  // prefix. Classify it first so the dreaming reconciler never adopts or
-  // prunes the independently managed daily-report job.
-  if (isManagedDailyReportJob(job)) return false;
-  if (normalizeTrimmedString(job.description)?.includes(MANAGED_DREAMING_CRON_TAG)) return true;
-  const name = normalizeTrimmedString(job.name);
   const payloadText = normalizeTrimmedString(job.payload?.text ?? job.payload?.message);
-  return name === MANAGED_DREAMING_CRON_NAME && payloadText === DREAMING_TRIGGER_TOKEN;
-}
-
-/** Legacy crons that conflict with plugin-managed dreaming schedules. */
-export function isLegacyConflictCronJob(job: CronJob): boolean {
-  if (isManagedDreamingJob(job)) return false;
-
-  const name = normalizeTrimmedString(job.name)?.toLowerCase() ?? "";
-  const description = normalizeTrimmedString(job.description)?.toLowerCase() ?? "";
-  const payloadText = normalizeTrimmedString(job.payload?.text ?? job.payload?.message);
-
-  if (payloadText === DREAMING_TRIGGER_TOKEN) return true;
-  if (name === "dreaming-plugin-healthcheck") return true;
-  if (name.includes("dreaming") && name.includes("healthcheck")) return true;
-  if (description.includes("dreaming-plugin-healthcheck")) return true;
-
-  return false;
-}
-
-export async function removeLegacyConflictCronJobs(params: {
-  cron: CronService;
-  logger: PluginLogger;
-}): Promise<number> {
-  const allJobs = await params.cron.list({ includeDisabled: true });
-  let removed = 0;
-
-  for (const job of allJobs) {
-    if (!isLegacyConflictCronJob(job)) continue;
-    try {
-      if ((await params.cron.remove(job.id)).removed === true) {
-        removed += 1;
-        params.logger.warn(
-          `memory-lancedb-dreaming: removed legacy conflict cron job "${job.name ?? job.id}" (${job.id})`
-        );
-      }
-    } catch (err) {
-      params.logger.warn(
-        `memory-lancedb-dreaming: failed to remove legacy conflict cron job ${job.id}: ${String(err)}`
-      );
-    }
-  }
-
-  return removed;
+  return payloadText === DREAMING_TRIGGER_TOKEN;
 }
 
 function sortManagedJobs(managed: CronJob[]): CronJob[] {
@@ -209,9 +161,6 @@ export async function reconcileManagedDreamingCron(params: {
   if (!cron) return { status: "unavailable", removed: 0 };
 
   let removed = 0;
-  if (config.enabled) {
-    removed += await removeLegacyConflictCronJobs({ cron, logger });
-  }
 
   const dreaming = await reconcileSingleManagedCron({
     cron: params.cron,
@@ -403,10 +352,8 @@ export function buildManagedDailyReportCronJob(config: DreamingConfig): Omit<Cro
 }
 
 function isManagedDailyReportJob(job: CronJob): boolean {
-  if (normalizeTrimmedString(job.description)?.includes(MANAGED_DAILY_REPORT_CRON_TAG)) return true;
-  const name = normalizeTrimmedString(job.name);
   const payloadText = normalizeTrimmedString(job.payload?.text ?? job.payload?.message);
-  return name === MANAGED_DAILY_REPORT_CRON_NAME && payloadText === DAILY_REPORT_TRIGGER_TOKEN;
+  return payloadText === DAILY_REPORT_TRIGGER_TOKEN;
 }
 
 function buildManagedDailyReportPatch(

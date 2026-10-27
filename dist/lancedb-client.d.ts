@@ -7,6 +7,12 @@ export type CachedLancedbConfig = {
     storageOptions?: Record<string, string>;
     pluginId?: string;
 };
+export type LancedbStatusSummary = {
+    dbPath: string;
+    dimensions: number;
+    storageOptionsConfigured: boolean;
+    pluginId?: string;
+};
 /** Read OpenClaw config from disk (`OPENCLAW_CONFIG_PATH` or `~/.openclaw/openclaw.json`). */
 export declare function loadConfigFromDisk(): Record<string, unknown> | undefined;
 /** Resolve LanceDB memory plugin entry from api config, runtime, or disk. */
@@ -19,6 +25,10 @@ export declare function initLancedbConfigCache(api: OpenClawPluginApi): CachedLa
 /** Re-read config; on failure keeps the previous cache. */
 export declare function refreshLancedbConfigCache(api: OpenClawPluginApi): CachedLancedbConfig | null;
 export declare function getCachedLancedbConfig(): CachedLancedbConfig | null;
+/** Public status view that never exposes storage credential names or values. */
+export declare function summarizeLancedbConfig(config: CachedLancedbConfig | null): LancedbStatusSummary | null;
+/** Redact known LanceDB credentials before an error reaches logs. */
+export declare function sanitizeLancedbError(error: unknown, config?: CachedLancedbConfig | null): string;
 export declare function getResolvedLanceDbPluginId(): string | null;
 export declare function createDreamingDb(): MemoryDB;
 /** Serialize LanceDB reads for safe concurrent access from hooks/tools. */

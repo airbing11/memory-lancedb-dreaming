@@ -5,6 +5,21 @@ import { resolveLanceDbMemoryEntryFromConfig, resolveMemorySlotPluginId, } from 
 import { MemoryDB, vectorDimsForModel } from "./memory-db.js";
 import { resolveDbPathForLance, setLanceDbPathResolver } from "./lancedb-path.js";
 import { createAsyncLock } from "./utils.js";
+function sanitizeDbPathForStatus(dbPath) {
+    if (!/^[a-z][a-z0-9+.-]*:\/\//i.test(dbPath))
+        return dbPath;
+    try {
+        const parsed = new URL(dbPath);
+        parsed.username = "";
+        parsed.password = "";
+        parsed.search = "";
+        parsed.hash = "";
+        return parsed.toString();
+    }
+    catch {
+        return "[configured remote LanceDB path]";
+    }
+}
 const DEFAULT_DB_PATH = "~/.openclaw/memory/lancedb";
 const LANCEDB_CONFIG_HELP = "set plugins.slots.memory to your LanceDB plugin (e.g. memory-lancedb-pro) and ensure plugins.entries.<id>.config has embedding (and optional dbPath) in ~/.openclaw/openclaw.json";
 let cachedLancedbCfg = null;
@@ -177,6 +192,34 @@ function resolveLancedbCfg() {
 }
 export function getCachedLancedbConfig() {
     return cachedLancedbCfg;
+}
+/** Public status view that never exposes storage credential names or values. */
+export function summarizeLancedbConfig(config) {
+    if (!config)
+        return null;
+    return {
+        dbPath: sanitizeDbPathForStatus(config.dbPath),
+        dimensions: config.dimensions,
+        storageOptionsConfigured: Object.keys(config.storageOptions ?? {}).length > 0,
+        ...(config.pluginId ? { pluginId: config.pluginId } : {}),
+    };
+}
+/** Redact known LanceDB credentials before an error reaches logs. */
+export function sanitizeLancedbError(error, config = cachedLancedbCfg) {
+    let message = String(error);
+    if (!config)
+        return message;
+    const safeDbPath = sanitizeDbPathForStatus(config.dbPath);
+    if (safeDbPath !== config.dbPath) {
+        message = message.split(config.dbPath).join(safeDbPath);
+    }
+    const secrets = Object.values(config.storageOptions ?? {})
+        .filter((value) => value.length > 0)
+        .sort((a, b) => b.length - a.length);
+    for (const secret of secrets) {
+        message = message.split(secret).join("[REDACTED]");
+    }
+    return message;
 }
 export function getResolvedLanceDbPluginId() {
     return cachedLancedbPluginId ?? cachedLancedbCfg?.pluginId ?? null;

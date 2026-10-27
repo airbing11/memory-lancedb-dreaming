@@ -12,6 +12,8 @@ OpenClaw has one active memory slot and can resolve dreaming settings from that 
 
 **v0.3.15** closes the remaining “same story, different wording” gap: REM theme cooldown, narrative source history, no long narrative without enough novel material, output similarity gating, and semantic push fingerprints.
 
+**v0.3.20** hardens agent-visible status and cron ownership: `storageOptions` values and remote URI credentials never appear in `dreaming_status` / `dreaming_doctor`, and cron jobs are managed only when they carry a plugin trigger token.
+
 **v0.2.6** fixes duplicate daily report pushes, adds `pushOn: "changed"` delivery dedupe, auto-staggers colliding report cron schedules, and rotates REM Lasting Truths / cluster exemplars across days.
 
 **v0.2.4+** reads LanceDB `dbPath` / `embedding` from `plugins.slots.memory` (including `memory-lancedb-pro`).
@@ -76,7 +78,7 @@ You do not have to switch back to `memory-core` just to keep dreaming.
 
 | Item | Notes |
 |------|-------|
-| Supported OpenClaw | 2026.6.9+ (security baseline); v0.3.19 validated against 2026.7.2-beta.7 |
+| Supported OpenClaw | 2026.6.9+ (security baseline); v0.3.20 validated against 2026.7.2-beta.7 |
 | Third-party slot sidecar | Before 6.5/6.6, managed cron could show `ok` with no artifacts (#92536); fixed in #93678. Fallback: add `memory-core` to `plugins.allow` with `enabled: false` |
 | Install | Prefer ClawHub: `openclaw plugins install clawhub:memory-lancedb-dreaming`; offline: `scripts/install.sh` |
 | Troubleshooting | Run `dreaming_doctor` / `scripts/doctor.sh` first |
@@ -92,6 +94,8 @@ You do not have to switch back to `memory-core` just to keep dreaming.
 **v0.2.8** 解决长期运行后日报「换措辞但素材重复」：REM 文本级去重、排除已提炼记忆、叙事新鲜度、Deep 空转 novelty 模式、`dreaming_doctor` 自检。
 
 **v0.3.15** 进一步解决「同一批主题和素材每天换说法」：主题跨日冷却、叙事素材历史、无足够新料不写长叙事、输出相似度拦截，以及忽略纯措辞变化的推送指纹。
+
+**v0.3.20** 加固工具输出和 cron 归属：`dreaming_status` / `dreaming_doctor` 不再返回 `storageOptions` 值或远程 URI 凭据；只有携带插件 trigger token 的任务才会被自动管理。
 
 **v0.2.6** 已修复日报双推、IM 相似内容重复推送，并增加 REM Lasting Truths 与聚类 exemplar 的跨天轮换。
 
@@ -128,7 +132,7 @@ You do not have to switch back to `memory-core` just to keep dreaming.
 
 | 项 | 说明 |
 |----|------|
-| 支持的 OpenClaw | 2026.6.9+（安全基线）；v0.3.19 已对 2026.7.2-beta.7 过 ClawHub validate |
+| 支持的 OpenClaw | 2026.6.9+（安全基线）；v0.3.20 已对 2026.7.2-beta.7 过 ClawHub validate |
 | 第三方插槽 dreaming sidecar | 6.5/6.6 之前 managed cron 可能显示 `ok` 但无产物（#92536）；已由 #93678 修复 |
 | 安装方式 | 优先 ClawHub：`openclaw plugins install clawhub:memory-lancedb-dreaming`；离线 `scripts/install.sh` |
 | 排障第一步 | 先跑 `dreaming_doctor` / `scripts/doctor.sh`，再开 issue |
@@ -181,6 +185,12 @@ OpenClaw 对 cron 完成文本的额外 announce，避免多通道环境报
 - 每分钟 reconcile 不再删除并重建日报任务，任务 ID、运行历史和 last-run 状态保持稳定
 - 升级后无需手动重建 cron，下一次 reconcile 会继续管理现有两条任务
 
+### v0.3.20 安全加固
+
+- `dreaming_status` / `dreaming_doctor` 仅显示脱敏后的 LanceDB 摘要，不返回 `storageOptions` 键值、URI 用户信息或查询参数。
+- cron 名称和描述不再作为自动修改或删除依据；只有各自专属 trigger token 才能证明插件归属。
+- 启用日报推送前请确认 `dailyReport.delivery` 的接收通道与对象；REM/叙事阶段使用的模型可能接收候选记忆内容。
+
 ### 为什么需要这个插件
 
 OpenClaw **同一时间只启用一个 memory 插槽**。Dreaming 配置可以跟随 slot owner，但是否对 LanceDB 向量执行完整 Light / REM / Deep 取决于该 provider。本插件提供独立的 LanceDB 向量管线与可读日报层。
@@ -203,7 +213,7 @@ OpenClaw **同一时间只启用一个 memory 插槽**。Dreaming 配置可以�
 
 ## 安装
 
-> v0.3.19 的最低安全基线是 **OpenClaw 2026.6.9**；已对 **2026.7.2-beta.7** 跑通 ClawHub validate。
+> v0.3.20 的最低安全基线是 **OpenClaw 2026.6.9**；已对 **2026.7.2-beta.7** 跑通 ClawHub validate。
 
 ### 方式 A：ClawHub（推荐）
 
@@ -214,14 +224,14 @@ openclaw plugins install clawhub:memory-lancedb-dreaming
 ### 方式 B：安装脚本
 
 ```bash
-bash scripts/install.sh memory-lancedb-dreaming-0.3.19.tgz
+bash scripts/install.sh memory-lancedb-dreaming-0.3.20.tgz
 ```
 
 ### 方式 C：手动解压
 
 ```bash
 mkdir -p ~/.openclaw/plugins/memory-lancedb-dreaming
-tar -xzf memory-lancedb-dreaming-0.3.19.tgz -C /tmp
+tar -xzf memory-lancedb-dreaming-0.3.20.tgz -C /tmp
 cp -r /tmp/package/* ~/.openclaw/plugins/memory-lancedb-dreaming/
 cd ~/.openclaw/plugins/memory-lancedb-dreaming && npm install --omit=dev
 ```
@@ -307,7 +317,7 @@ grep -r "workspace/memory-lancedb-dreaming" ~/.openclaw --include="*.json"
 
 启动后日志应出现 `cronHook=ready` 和 `modelOverride=ready`（若配置了 rem.model）。若为 `blocked` 或 `CONFIG BLOCKED` ERROR，说明对应 entry 字段未生效。
 
-> 插件启用时会自动清理遗留冲突 cron（如 `dreaming-plugin-healthcheck`），避免与自管理 dreaming cron 冲突。
+> 插件只会自动管理携带专属 trigger token 的 cron。名称或描述恰好包含 `dreaming` / `healthcheck` 的用户任务不会被修改或删除；无 token 的旧任务请人工确认后处理。
 
 > `rem.model` 或 `rem.execution.model`：配置后 REM 阶段会按 **category 分组** 调用 LLM 生成中英文主题名；**必须**配合 `subagent.allowModelOverride: true`，否则回退到 category 标签。
 
@@ -323,7 +333,7 @@ Dreaming 从 **当前 memory 插槽** 读取 LanceDB 的 `dbPath` / `embedding`�
 2. 若 slot 未设或该 entry 无 config，再回退 `memory-lancedb-pro` → `memory-lancedb` → `lancedb-pro`
 
 启动日志应出现：`cached LanceDB config (plugin=memory-lancedb-pro, dbPath=...)`。  
-`dreaming_status` 会返回 `lancedbPluginId` 与 `lancedb`；若 pipeline 失败而日报仍在发，先查这两项。
+`dreaming_status` 会返回 `lancedbPluginId` 与脱敏后的 `lancedb` 摘要；`storageOptions` 键值、远程 URI 用户信息和查询参数不会进入工具结果。若 pipeline 失败而日报仍在发，先查这两项。
 
 ## 梦境日报（v0.2.3+）
 
@@ -397,10 +407,10 @@ ls ~/.openclaw/plugins/memory-lancedb-dreaming/dist/index.js
 grep -r "workspace/memory-lancedb-dreaming" ~/.openclaw --include="*.json" || echo "no stale workspace path"
 ```
 
-### 1. 安装 v0.3.19 并重启 gateway
+### 1. 安装 v0.3.20 并重启 gateway
 
 ```bash
-bash scripts/install.sh memory-lancedb-dreaming-0.3.19.tgz
+bash scripts/install.sh memory-lancedb-dreaming-0.3.20.tgz
 openclaw gateway stop 2>/dev/null || true
 openclaw gateway run
 ```
@@ -444,7 +454,7 @@ openclaw cron run <dreaming-job-id>
 | 4 | REM 语义主题 | rem 文件含 LLM 主题名 |
 | 5 | 中文叙事 | DREAMS.md 含 zh + en |
 | 6 | cron 触发 | trigger received + phases completed |
-| 7 | 冲突 cron 清理 | 无 `dreaming-plugin-healthcheck` |
+| 7 | cron 归属安全 | 无 token 的同名/相似用户任务保持不变 |
 | 8 | dreaming_doctor | 无 blocking 项 |
 | 9 | 梦境日报文件 | `memory/YYYY-MM-DD.md` 含 `## 梦境日报` |
 | 10 | 日报 cron | `openclaw cron list` 含 `Dreaming Daily Report` |
@@ -477,10 +487,10 @@ MIT © 2026 airbing11
 
 ## 版本与变更
 
-- 当前版本：**0.3.19**（含 cron 身份稳定性修复、跨日反重复、REM 零主题计数与主题名前缀清理）
+- 当前版本：**0.3.20**（含状态凭据脱敏与 token-only cron 归属加固）
 - 页面版式基线：**0.2.7**（README 英文在前 + `## 中文说明`）
 - 变更记录：[CHANGELOG.md](./CHANGELOG.md)
-- 验收步骤：[docs/v0.3.19-OPENCLAW-TEST-STEPS.md](./docs/v0.3.19-OPENCLAW-TEST-STEPS.md)
+- 验收步骤：本文「升级后验收」章节
 
 ## 发布渠道
 

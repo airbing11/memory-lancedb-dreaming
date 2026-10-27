@@ -1,5 +1,15 @@
 # Changelog
 
+## [0.3.20] - 2026-10-27
+### Security
+- redact LanceDB storage option values and remote URI credentials from agent-visible status and doctor results
+- replace raw LanceDB errors in tool results with a generic diagnostic message and scrub known credential values from related Gateway logs
+- require the dedicated trigger token before any cron job can be adopted, updated, deduplicated, or removed
+- stop using cron names and descriptions, including legacy healthcheck names and managed tags, as ownership evidence
+
+### Verified
+- add regression coverage for credential-safe status summaries and token-only cron ownership in enabled and disabled states
+
 ## [0.3.19] - 2026-10-26
 ### Fixed
 - prevent the daily-report cron tag from also matching the broader dreaming cron tag

@@ -18,6 +18,27 @@ export type CachedLancedbConfig = {
   pluginId?: string;
 };
 
+export type LancedbStatusSummary = {
+  dbPath: string;
+  dimensions: number;
+  storageOptionsConfigured: boolean;
+  pluginId?: string;
+};
+
+function sanitizeDbPathForStatus(dbPath: string): string {
+  if (!/^[a-z][a-z0-9+.-]*:\/\//i.test(dbPath)) return dbPath;
+  try {
+    const parsed = new URL(dbPath);
+    parsed.username = "";
+    parsed.password = "";
+    parsed.search = "";
+    parsed.hash = "";
+    return parsed.toString();
+  } catch {
+    return "[configured remote LanceDB path]";
+  }
+}
+
 const DEFAULT_DB_PATH = "~/.openclaw/memory/lancedb";
 
 const LANCEDB_CONFIG_HELP =
@@ -240,6 +261,40 @@ function resolveLancedbCfg(): CachedLancedbConfig {
 
 export function getCachedLancedbConfig(): CachedLancedbConfig | null {
   return cachedLancedbCfg;
+}
+
+/** Public status view that never exposes storage credential names or values. */
+export function summarizeLancedbConfig(
+  config: CachedLancedbConfig | null
+): LancedbStatusSummary | null {
+  if (!config) return null;
+  return {
+    dbPath: sanitizeDbPathForStatus(config.dbPath),
+    dimensions: config.dimensions,
+    storageOptionsConfigured: Object.keys(config.storageOptions ?? {}).length > 0,
+    ...(config.pluginId ? { pluginId: config.pluginId } : {}),
+  };
+}
+
+/** Redact known LanceDB credentials before an error reaches logs. */
+export function sanitizeLancedbError(
+  error: unknown,
+  config: CachedLancedbConfig | null = cachedLancedbCfg
+): string {
+  let message = String(error);
+  if (!config) return message;
+
+  const safeDbPath = sanitizeDbPathForStatus(config.dbPath);
+  if (safeDbPath !== config.dbPath) {
+    message = message.split(config.dbPath).join(safeDbPath);
+  }
+  const secrets = Object.values(config.storageOptions ?? {})
+    .filter((value) => value.length > 0)
+    .sort((a, b) => b.length - a.length);
+  for (const secret of secrets) {
+    message = message.split(secret).join("[REDACTED]");
+  }
+  return message;
 }
 
 export function getResolvedLanceDbPluginId(): string | null {

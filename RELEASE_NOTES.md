@@ -1,27 +1,26 @@
-# memory-lancedb-dreaming v0.3.19
+# memory-lancedb-dreaming v0.3.20
 
-> **Date:** 2026-10-26
-> **Package:** `memory-lancedb-dreaming-0.3.19.tgz`
+> **Date:** 2026-10-27
+> **Package:** `memory-lancedb-dreaming-0.3.20.tgz`
 
-## Fixed
+## Security
 
-- Prevent the daily-report managed tag from also matching the broader dreaming tag.
-- Stop the 60-second reconciler from deleting and recreating the daily-report cron.
-- Preserve both managed cron IDs, run history, and last-run state across reconcile ticks.
-- Add a stateful five-tick regression test covering a clean installation.
-- Remove the obsolete `contracts.tools` manifest declaration for current ClawHub compatibility.
+- Redact LanceDB `storageOptions`, remote URI credentials, query parameters, and raw database errors from agent-visible status, doctor, and trigger results; scrub known credential values from related Gateway errors.
+- Manage, update, deduplicate, or remove cron jobs only when their payload carries the plugin's dedicated trigger token.
+- Never infer cron ownership from user-controlled names or descriptions, including `dreaming-plugin-healthcheck` and managed-tag text.
 
 ## Verification
 
-- `npm test`: 77 tests passed.
-- Repeated reconcile from an empty cron store creates exactly two jobs.
-- Five subsequent ticks perform no updates or removals and retain the original IDs.
+- `npm test`: 78 tests passed.
+- Credential regression covers storage keys/values plus URI username, password, query, and fragment removal.
+- Cron regression covers enabled and disabled reconciliation, renamed legacy token jobs, and name/tag-only user jobs.
 
 ## Upgrade
 
 ```bash
-bash scripts/install.sh memory-lancedb-dreaming-0.3.19.tgz
+bash scripts/install.sh memory-lancedb-dreaming-0.3.20.tgz
 openclaw gateway restart
 ```
 
-No cron migration or manual recreation is required.
+No cron migration or manual recreation is required. Review the configured LLM and
+`dailyReport.delivery` recipient before sending memory-derived content externally.

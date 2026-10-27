@@ -71,12 +71,6 @@ export declare function buildManagedDreamingCronJob(config: DreamingConfig): {
         mode: "none";
     };
 };
-/** Legacy crons that conflict with plugin-managed dreaming schedules. */
-export declare function isLegacyConflictCronJob(job: CronJob): boolean;
-export declare function removeLegacyConflictCronJobs(params: {
-    cron: CronService;
-    logger: PluginLogger;
-}): Promise<number>;
 export declare function reconcileManagedDreamingCron(params: {
     cron: CronService | null;
     config: DreamingConfig;
